@@ -131,3 +131,10 @@ function wireStaticHandlers(){
 
 wireStaticHandlers();
 boot();
+
+// PWA: register service worker on http/https only (skip file:// for local dev).
+if ('serviceWorker' in navigator && (location.protocol === 'http:' || location.protocol === 'https:')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(err => console.warn('SW registration failed:', err));
+  });
+}

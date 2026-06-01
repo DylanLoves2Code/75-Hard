@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Black background -->
+  <rect width="512" height="512" fill="#0a0a0a"/>
+  <!-- Subtle inner border for tactical feel -->
+  <rect x="24" y="24" width="464" height="464" fill="none" stroke="#1a1a1a" stroke-width="2"/>
+  <!-- Orange shield circle -->
+  <circle cx="256" cy="256" r="180" fill="none" stroke="#ff3c00" stroke-width="14"/>
+  <!-- Inner crosshair lines (subtle) -->
+  <line x1="256" y1="60" x2="256" y2="100" stroke="#ff3c00" stroke-width="4"/>
+  <line x1="256" y1="412" x2="256" y2="452" stroke="#ff3c00" stroke-width="4"/>
+  <line x1="60" y1="256" x2="100" y2="256" stroke="#ff3c00" stroke-width="4"/>
+  <line x1="412" y1="256" x2="452" y2="256" stroke="#ff3c00" stroke-width="4"/>
+  <!-- "75" in bold white centered -->
+  <text x="256" y="256"
+        font-family="'Bebas Neue', 'Oswald', Impact, 'Arial Black', sans-serif"
+        font-size="220"
+        font-weight="900"
+        fill="#ffffff"
+        text-anchor="middle"
+        dominant-baseline="central"
+        letter-spacing="-8">75</text>
+  <!-- HARD label under -->
+  <text x="256" y="408"
+        font-family="'Share Tech Mono', 'Courier New', monospace"
+        font-size="34"
+        font-weight="700"
+        fill="#ff3c00"
+        text-anchor="middle"
+        letter-spacing="14">HARD</text>
+</svg>
