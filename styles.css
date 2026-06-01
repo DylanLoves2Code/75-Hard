@@ -592,3 +592,56 @@ body.report-mode #report-view{display:block;}
 .settings-notif-row .btn-sm{flex:0 0 auto;}
 .settings-notif-row .settings-hint[data-perm="granted"]{color:var(--green);}
 .settings-notif-row .settings-hint[data-perm="denied"]{color:var(--red);}
+
+/* ------------------------------------------------------------------------- */
+/* w5c: shareable progress link + accountability partner mode                */
+/* ------------------------------------------------------------------------- */
+
+/* Share-link reveal block on the Export tab. */
+.btn-share{border-color:var(--blue);color:var(--blue);}
+.btn-share:hover{background:var(--blue);color:#000;}
+.share-link-wrap{background:var(--bg3);border:1px solid var(--border);border-left:3px solid var(--blue);padding:0.75rem;margin:0 0 0.75rem;display:flex;flex-direction:column;gap:0.5rem;}
+.share-link-hint{font-family:var(--font-m);font-size:0.6rem;color:var(--text3);letter-spacing:0.15em;text-transform:uppercase;}
+.share-link-input{width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);font-family:var(--font-m);font-size:0.65rem;padding:0.5rem 0.6rem;outline:none;letter-spacing:0.02em;word-break:break-all;}
+.share-link-actions{display:flex;gap:0.5rem;}
+.share-link-actions .btn-sm,.share-link-actions .btn-row{flex:0 0 auto;}
+
+/* Settings modal: partner add row + stored partner list. */
+.partners-add-row{display:flex;gap:0.5rem;align-items:center;}
+.partners-add-row .partners-url-input{flex:1;min-width:0;border-left-color:var(--blue);}
+.partners-add-row .btn-sm{flex:0 0 auto;}
+.partners-settings-list{display:flex;flex-direction:column;gap:0.45rem;margin-top:0.5rem;}
+.partners-settings-row{display:flex;justify-content:space-between;align-items:center;gap:0.5rem;background:var(--bg);border:1px solid var(--border);border-left:3px solid var(--blue);padding:0.5rem 0.6rem;}
+.partners-settings-main{flex:1;min-width:0;}
+.partners-settings-name{font-family:var(--font-b);font-size:0.85rem;color:var(--text);letter-spacing:0.04em;}
+.partners-settings-meta{font-family:var(--font-m);font-size:0.55rem;color:var(--text3);letter-spacing:0.12em;text-transform:uppercase;margin-top:2px;}
+.partners-settings-row .btn-row{flex:0 0 auto;}
+.partners-empty{font-family:var(--font-m);font-size:0.6rem;color:var(--text3);letter-spacing:0.15em;text-transform:uppercase;padding:0.4rem 0;}
+
+/* Today-tab partners panel. */
+.partners-section{margin:0 1.25rem 1.25rem;padding:1rem 1rem;background:var(--bg3);border:1px solid var(--border);border-left:3px solid var(--blue);}
+.partners-list{display:flex;flex-direction:column;gap:0.4rem;}
+.partner-row{display:flex;justify-content:space-between;align-items:center;gap:0.6rem;background:var(--bg);border:1px solid var(--border);border-left:3px solid var(--text3);padding:0.5rem 0.6rem;}
+.partner-row.partner-lead{border-left-color:var(--green);}
+.partner-row.partner-tie{border-left-color:var(--gold);}
+.partner-row.partner-behind{border-left-color:var(--red);}
+.partner-main{flex:1;min-width:0;}
+.partner-name{font-family:var(--font-b);font-size:0.85rem;color:var(--text);letter-spacing:0.04em;}
+.partner-row.partner-lead .partner-name{color:var(--green);}
+.partner-row.partner-behind .partner-name{color:var(--red);}
+.partner-meta{font-family:var(--font-m);font-size:0.55rem;color:var(--text3);letter-spacing:0.12em;text-transform:uppercase;margin-top:2px;}
+.partner-refresh{flex:0 0 auto;background:transparent;border:1px solid var(--border2);color:var(--text3);font-family:var(--font-m);font-size:0.55rem;letter-spacing:0.15em;padding:0.25rem 0.5rem;cursor:pointer;text-transform:uppercase;transition:all 0.2s;}
+.partner-refresh:hover{border-color:var(--blue);color:var(--blue);}
+.partners-refresh-row{display:flex;gap:0.4rem;align-items:center;margin-top:0.6rem;}
+.partners-input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--border2);border-left:3px solid var(--blue);color:var(--text);font-family:var(--font-m);font-size:0.65rem;padding:0.4rem 0.55rem;outline:none;}
+.partners-status{font-family:var(--font-m);font-size:0.55rem;color:var(--text3);letter-spacing:0.15em;text-transform:uppercase;margin-top:0.4rem;}
+
+/* Shared view (read-only friend snapshot — `#share=...` URL). */
+body.shared-view-mode{background:var(--bg);}
+.shared-view{max-width:760px;margin:0 auto;padding:1.5rem 1.25rem;}
+.shared-header{border-bottom:2px solid var(--blue);padding-bottom:0.75rem;margin-bottom:1rem;}
+.shared-title{font-family:var(--font-d);font-size:1.8rem;color:var(--blue);letter-spacing:0.05em;line-height:1.1;}
+.shared-sub{font-family:var(--font-m);font-size:0.7rem;color:var(--text2);letter-spacing:0.18em;text-transform:uppercase;margin-top:0.35rem;}
+.shared-back{margin-top:0.85rem;}
+.shared-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.65rem;margin-bottom:1.25rem;}
+.shared-view .section{padding:0;border:none;}

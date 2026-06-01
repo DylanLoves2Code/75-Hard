@@ -29,8 +29,12 @@ import {
   exportData, confirmReset, cancelReset, executeReset,
   pickImportFile, handleImportFile, executeImport, cancelImport,
   exportPhotosZip, pickPhotoZipFile, handlePhotoZipFile,
-  exportIcs,
+  exportIcs, generateAndShowShareLink,
 } from './export.js';
+import { parseShareFragment, renderSharedView } from './share.js';
+import {
+  renderPartnersPanel, getPartners, addPartnerFromUrl, removePartner,
+} from './partners.js';
 import { on } from './bus.js';
 import {
   getSettings, openSettings, closeSettings, applySettingsFromModal,
@@ -102,6 +106,9 @@ export function renderAll(s){
   renderStats(s);
   renderGallery(s);
   renderBooks(s);
+  // w5c item 45: partners panel on the Today tab. No-op when the user
+  // hasn't added any partners yet (the host element hides itself).
+  renderPartnersPanel(document.getElementById('partners-panel'));
 }
 
 /**
@@ -263,6 +270,23 @@ function boot(){
     return;
   }
 
+  // w5c item 44: shared-view mode. When the URL carries a `#share=...`
+  // fragment we render a frozen friend snapshot and hide the normal
+  // app shell. Setup screen is also hidden so first-time visitors who
+  // open a share link don't have to onboard before seeing the snapshot.
+  const sharedSnap = parseShareFragment();
+  if(sharedSnap){
+    applyTheme();
+    applyReducedMotionClass();
+    document.body.classList.add('shared-view-mode');
+    const setup = document.getElementById('setup-screen');
+    if(setup) setup.classList.remove('active');
+    const appEl = document.getElementById('app');
+    if(appEl) appEl.style.display = 'none';
+    renderSharedView(sharedSnap, document.getElementById('shared-view-host'));
+    return;
+  }
+
   const s=getState();
   if(!s){
     const today=new Date();
@@ -287,6 +311,42 @@ function boot(){
   }
 }
 
+/**
+ * Render the partners list inside the Settings modal — small rows with
+ * a [REMOVE] button next to each. Called when the modal opens and
+ * after every add/remove so the UI stays in sync without a global
+ * rerender. The Today-tab panel still uses its own renderer.
+ * @returns {void}
+ */
+function renderSettingsPartnersList(){
+  const host=document.getElementById('set-partners-list');
+  if(!host)return;
+  const partners=getPartners();
+  if(!partners.length){
+    host.innerHTML='<div class="partners-empty">// NO PARTNERS YET</div>';
+    return;
+  }
+  host.innerHTML=partners.map(p=>{
+    const updated=p.lastUpdated?new Date(p.lastUpdated).toISOString().slice(0,10):'—';
+    const safeName=String(p.name).replace(/[<>&"']/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'})[c]);
+    return `<div class="partners-settings-row" data-name="${safeName}">`+
+      `<div class="partners-settings-main">`+
+        `<div class="partners-settings-name">${safeName}</div>`+
+        `<div class="partners-settings-meta">// DAY ${p.dayN} — STREAK ${p.streak} — SNAPSHOT ${updated}</div>`+
+      `</div>`+
+      `<button type="button" class="btn-row partner-remove-btn" data-name="${safeName}">REMOVE</button>`+
+    `</div>`;
+  }).join('');
+  host.querySelectorAll('.partner-remove-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      removePartner(btn.dataset.name||'');
+      renderSettingsPartnersList();
+      const status=document.getElementById('set-partners-status');
+      if(status)status.textContent='// REMOVED '+btn.dataset.name;
+    });
+  });
+}
+
 function wireStaticHandlers(){
   document.querySelector('#setup-screen .btn-primary').addEventListener('click',initChallenge);
   // Setup-screen diet select: reveal the custom text input only when needed.
@@ -300,7 +360,14 @@ function wireStaticHandlers(){
   document.getElementById('theme-btn').addEventListener('click',toggleTheme);
 
   // Settings panel — header gear icon opens it; modal has save/cancel/close.
-  document.getElementById('settings-btn').addEventListener('click',openSettings);
+  // Also refresh the partners list on open so removals/adds done in a
+  // prior session show up.
+  document.getElementById('settings-btn').addEventListener('click',()=>{
+    openSettings();
+    renderSettingsPartnersList();
+    const status=document.getElementById('set-partners-status');
+    if(status)status.textContent='';
+  });
   document.getElementById('settings-close').addEventListener('click',closeSettings);
   document.getElementById('settings-cancel-btn').addEventListener('click',closeSettings);
   document.getElementById('settings-save').addEventListener('click',applySettingsFromModal);
@@ -340,6 +407,26 @@ function wireStaticHandlers(){
   document.getElementById('btn-import-photos').addEventListener('click',pickPhotoZipFile);
   const icsBtn=document.getElementById('btn-export-ics');
   if(icsBtn)icsBtn.addEventListener('click',exportIcs);
+  // w5c item 44: share-link button on Export tab.
+  const shareBtn=document.getElementById('btn-share-link');
+  if(shareBtn)shareBtn.addEventListener('click',generateAndShowShareLink);
+  // w5c item 45: partner add/remove inside the Settings modal.
+  const addPartnerBtn=document.getElementById('set-partner-add');
+  if(addPartnerBtn){
+    addPartnerBtn.addEventListener('click',()=>{
+      const input=document.getElementById('set-partner-url');
+      const status=document.getElementById('set-partners-status');
+      if(!input)return;
+      const result=addPartnerFromUrl(input.value);
+      if(!result.ok){
+        if(status)status.textContent='// '+(result.reason||'INVALID');
+        return;
+      }
+      input.value='';
+      if(status)status.textContent='// ADDED '+result.partner.name;
+      renderSettingsPartnersList();
+    });
+  }
   document.getElementById('import-file-input').addEventListener('change',handleImportFile);
   document.getElementById('import-zip-input').addEventListener('change',handlePhotoZipFile);
   document.querySelector('#tab-export .btn-reset-full').addEventListener('click',confirmReset);

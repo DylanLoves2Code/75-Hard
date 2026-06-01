@@ -136,6 +136,10 @@
       </div>
     </div>
 
+    <!-- w5c item 45: accountability partners panel — empty until the user
+         adds at least one partner snapshot via the Settings modal. -->
+    <div id="partners-panel" style="display:none;"></div>
+
     <div class="section">
       <div class="section-title">OBJECTIVES</div>
       <div class="task-list" id="task-list"></div>
@@ -290,6 +294,15 @@
       <button class="btn-export" id="btn-export-photos">⬇ EXPORT PHOTOS (ZIP)</button>
       <button class="btn-export" id="btn-import-photos">⬆ IMPORT PHOTOS (ZIP)</button>
       <button class="btn-export" id="btn-export-ics">📅 DOWNLOAD CALENDAR (.ics)</button>
+      <button class="btn-export btn-share" id="btn-share-link">🔗 GENERATE SHARE LINK</button>
+      <div class="share-link-wrap" id="share-link-wrap" style="display:none;">
+        <div class="share-link-hint">// Read-only snapshot — no photos, no notes. Send to a partner.</div>
+        <input type="text" id="share-link-input" class="share-link-input" readonly>
+        <div class="share-link-actions">
+          <button type="button" class="btn-sm" id="share-link-copy">COPY</button>
+          <button type="button" class="btn-row" id="share-link-close">CLOSE</button>
+        </div>
+      </div>
       <button class="btn-print-report" id="btn-print-report">🖨 PRINT REPORT</button>
       <input type="file" id="import-file-input" accept=".json,application/json" style="display:none;">
       <input type="file" id="import-zip-input" accept=".zip,application/zip" style="display:none;">
@@ -500,6 +513,22 @@
         </label>
         <input type="time" class="settings-input" id="set-ics-w2" step="60">
       </div>
+
+      <!-- w5c item 45: accountability partners -->
+      <div class="settings-section-divider">// PARTNERS</div>
+
+      <div class="settings-row settings-row-block">
+        <div class="settings-label">
+          <span class="settings-name">Accountability Partners</span>
+          <span class="settings-hint">// Paste a friend's share URL to track their progress. Max 3.</span>
+        </div>
+        <div class="partners-add-row">
+          <input type="text" class="settings-input partners-url-input" id="set-partner-url" placeholder="Paste share URL (#share=...)">
+          <button type="button" class="btn-sm" id="set-partner-add">ADD</button>
+        </div>
+        <div class="partners-settings-list" id="set-partners-list"></div>
+        <div class="settings-hint" id="set-partners-status"></div>
+      </div>
     </div>
 
     <div class="settings-actions">
@@ -511,6 +540,10 @@
 
 <!-- DAY 75 PRINT REPORT (hidden until ?report=1) -->
 <div id="report-view"></div>
+
+<!-- w5c item 44: shared-view host (read-only friend snapshot) — only
+     populated when the page loads with a `#share=...` URL fragment. -->
+<div id="shared-view-host"></div>
 
 <script type="module" src="js/main.js"></script>
 </body>

@@ -39,6 +39,10 @@ import { showToast } from './toast.js';
  *                                            red "tasks remaining" urgent banner. Default 21.
  * @property {string}  icsWorkout1Time         HH:MM 24-hour default for Workout 1 in ICS export.
  * @property {string}  icsWorkout2Time         HH:MM 24-hour default for Workout 2 in ICS export.
+ * @property {Array<{name:string,dayN:number,streak:number,done:number,grid:string,lastUpdated:number}>} partners
+ *                                            w5c item 45: stored accountability-partner snapshots. Each one is a
+ *                                            parsed share-link payload (no photos, no notes). Capped to a small
+ *                                            number (see js/partners.js MAX_PARTNERS). Defaults to [].
  */
 
 /** Defaults applied when a key is missing from the stored blob. @type {Settings} */
@@ -61,6 +65,10 @@ const DEFAULTS = Object.freeze({
   // w4b: ICS export defaults
   icsWorkout1Time: '06:00',
   icsWorkout2Time: '17:00',
+  // w5c item 45: accountability partners (stored in settings, not the
+  // schema-versioned state). Each entry is the trimmed share-link
+  // snapshot — see js/partners.js for the field contract.
+  partners: [],
 });
 
 /**
@@ -77,7 +85,12 @@ export function getSettings(){
   const cq = Array.isArray(raw.customQuotes)
     ? raw.customQuotes.filter(x => x && typeof x.q === 'string').map(x => ({ q: String(x.q), a: String(x.a || '') }))
     : DEFAULTS.customQuotes;
-  return { ...DEFAULTS, ...raw, customQuotes: cq };
+  // w5c: partners must be an array of opaque partner objects. Light
+  // validation here — js/partners.js applies the full per-field check.
+  const partners = Array.isArray(raw.partners)
+    ? raw.partners.filter(p => p && typeof p === 'object' && typeof p.name === 'string')
+    : DEFAULTS.partners;
+  return { ...DEFAULTS, ...raw, customQuotes: cq, partners };
 }
 
 /**
