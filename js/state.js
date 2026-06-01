@@ -75,8 +75,12 @@ import { showToast } from './toast.js';
  *                                                    `customText` carries the user's label.
  * @property {Object<string,DayData>} days            Map of day index (1..75) to DayData.
  * @property {Object<string,number>} drinks           Map of ISO week index (1-based) to drink count.
- * @property {Object<string,{title:string,pages:number,nonfiction:boolean}>} books   Daily book entries.
+ * @property {Object<string,{title:string,pages:number,nonfiction:boolean,quotes:Array<{text:string,page?:number}>,audiobookMinutes:number}>} books
+ *                                                    Daily book entries.
  *                                                    `nonfiction` is v3+ and defaults to true.
+ *                                                    `quotes` is v6+ (highlights & quotes vault).
+ *                                                    `audiobookMinutes` is v6+ (audiobook supplement,
+ *                                                    not counted toward the 10-page rule).
  * @property {Object<string,{weight:?number,sleep:?number}>} metrics  Daily weight/sleep metrics.
  * @property {Object<string,string>} notes            Daily field notes (free text).
  */
@@ -100,7 +104,7 @@ const DAY_DEFAULTS=Object.freeze({
  * The schema version this build of the app writes. Bumped whenever the
  * shape of stored state changes; {@link migrate} handles upgrades.
  */
-export const CURRENT_SCHEMA_VERSION = 5;
+export const CURRENT_SCHEMA_VERSION = 6;
 
 /**
  * Parse a "YYYY-MM-DD" string as a Date at LOCAL midnight (not UTC).
@@ -238,6 +242,26 @@ const MIGRATIONS=[
         }
       }
       s.version=5;
+    },
+  },
+  {
+    from:5,to:6,
+    run:(s)=>{
+      // v6: reading-depth fields on each book entry.
+      //   - Adds `quotes:Array<{text,page?}>` (default []) for the
+      //     highlights & quotes vault. Pre-v6 entries have no quotes.
+      //   - Adds `audiobookMinutes:number` (default 0) so the user can
+      //     log audio supplemental listening. Independent of the
+      //     page-count rule — pages still drive `read` completion.
+      if(s.books&&typeof s.books==='object'){
+        for(const k in s.books){
+          const b=s.books[k];
+          if(!b||typeof b!=='object')continue;
+          if(b.quotes===undefined)b.quotes=[];
+          if(b.audiobookMinutes===undefined)b.audiobookMinutes=0;
+        }
+      }
+      s.version=6;
     },
   },
 ];

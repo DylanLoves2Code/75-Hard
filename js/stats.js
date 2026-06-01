@@ -5,6 +5,7 @@ import { getSettings, lbsToKg } from './settings.js';
 import { getMeasurementsDiff } from './measurements.js';
 import { buildWellbeingTrend } from './wellbeing.js';
 import { getFailureLog } from './failure.js';
+import { totalAudiobookMinutes } from './books.js';
 
 /**
  * Render the stats overview cards and bar charts from saved state.
@@ -43,6 +44,11 @@ export function renderStats(s){
   }
   const nfPct=bookTotal?Math.round((bookNF/bookTotal)*100):null;
 
+  // v6: total audiobook supplemental listening. Rendered in hours
+  // (one decimal). 0 minutes shows as '—' to match other empty cards.
+  const audioMin=totalAudiobookMinutes(s);
+  const audioHrs=audioMin>0?(Math.round((audioMin/60)*10)/10):null;
+
   let weights=[],sleeps=[];
   for(let d=1;d<=today;d++){
     const m=s.metrics&&s.metrics[d];
@@ -68,6 +74,7 @@ export function renderStats(s){
     <div class="stat-card purple"><div class="stat-card-val">${avgW||'—'}</div><div class="stat-card-lbl">${weightLabel}</div></div>
     <div class="stat-card" style="border-left-color:var(--blue)"><div class="stat-card-val">${avgS||'—'}</div><div class="stat-card-lbl">Avg Sleep (hrs)</div></div>
     <div class="stat-card purple"><div class="stat-card-val">${nfPct===null?'—':nfPct+'%'}</div><div class="stat-card-lbl">Nonfiction Reads</div></div>
+    <div class="stat-card" style="border-left-color:var(--purple)"><div class="stat-card-val">${audioHrs===null?'—':audioHrs}</div><div class="stat-card-lbl">Audiobook Hours</div></div>
     <div class="stat-card" style="border-left-color:var(--red);grid-column:1/-1"><div class="stat-card-val" style="font-size:1.2rem;">${taskNames[missIdx]}</div><div class="stat-card-lbl">Most Missed Task (${missCount[mostMissed]} times)</div></div>
   `;
 

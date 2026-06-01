@@ -246,6 +246,10 @@
             <div style="font-family:var(--font-m);font-size:0.6rem;color:var(--text2);letter-spacing:0.1em;margin-bottom:0.25rem;">Pages today</div>
             <input type="number" class="book-pages-input" id="book-pages-input" min="0" max="9999" placeholder="10">
           </div>
+          <div>
+            <div style="font-family:var(--font-m);font-size:0.6rem;color:var(--text2);letter-spacing:0.1em;margin-bottom:0.25rem;">Audiobook min</div>
+            <input type="number" class="book-audio-input" id="book-audio-input" min="0" max="9999" placeholder="0">
+          </div>
           <label class="book-nonfiction-label" for="book-nonfiction-input">
             <input type="checkbox" id="book-nonfiction-input" checked>
             <span>NONFICTION</span>
@@ -253,11 +257,29 @@
           <button class="btn-sm" style="margin-left:0.75rem;">LOG</button>
         </div>
       </div>
+
+      <!-- READING POMODORO (item 37) -->
+      <div class="pomodoro-card">
+        <div class="pomodoro-header">
+          <div class="pomodoro-label">// READING POMODORO</div>
+          <div class="pomodoro-time" id="pomodoro-time">15:00</div>
+        </div>
+        <div class="pomodoro-actions">
+          <button type="button" class="btn-sm" id="pomodoro-start">START READING</button>
+          <button type="button" class="btn-row pomodoro-stop" id="pomodoro-stop" hidden>[ STOP ]</button>
+        </div>
+      </div>
+
       <div style="margin-bottom:1rem;">
         <div class="total-pages-lbl">Total Pages Read</div>
         <div class="total-pages-read" id="total-pages-read">0</div>
       </div>
+      <div class="books-subtab-bar">
+        <a href="#" class="books-subtab-link" id="books-view-quotes">// VIEW ALL QUOTES</a>
+        <a href="#" class="books-subtab-link" id="books-view-log" hidden>// BACK TO BOOK LOG</a>
+      </div>
       <div id="book-log"></div>
+      <div id="quotes-view" hidden></div>
     </div>
   </div>
 
