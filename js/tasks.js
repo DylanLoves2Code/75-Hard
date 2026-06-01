@@ -27,17 +27,31 @@ export function renderTaskList(s,day,containerId,isToday){
         <span class="task-label">${labelText}</span>
         ${showEdit?`<button type="button" class="btn-edit-label" aria-label="Rename ${t.label}">[ EDIT ]</button>`:''}
       `;
+      el.setAttribute('role','button');
+      el.setAttribute('aria-pressed',done?'true':'false');
+      el.setAttribute('aria-label',labelText);
       if(!isFuture){
-        el.addEventListener('click',e=>{
+        el.setAttribute('tabindex','0');
+        const activate=()=>{
           if(el.classList.contains('editing'))return;
-          if(e.target.closest('.btn-edit-label'))return;
-          if(e.target.closest('.task-label-input'))return;
           const s2=getState();
           const d2=getDayData(s2,day);
           updateDayData(s2,day,{[t.key]:!d2[t.key]});
           saveState(s2);
           if(isToday){checkCompletionAnimation(s2,day);renderAll(s2);}
           else{renderTaskList(s2,day,containerId,false);renderGrid(s2);}
+        };
+        el.addEventListener('click',e=>{
+          if(e.target.closest('.btn-edit-label'))return;
+          if(e.target.closest('.task-label-input'))return;
+          activate();
+        });
+        el.addEventListener('keydown',e=>{
+          if(e.target!==el)return;
+          if(e.key==='Enter'||e.key===' '){
+            e.preventDefault();
+            activate();
+          }
         });
         if(showEdit){
           const editBtn=el.querySelector('.btn-edit-label');

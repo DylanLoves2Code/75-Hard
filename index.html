@@ -44,7 +44,7 @@
           <span class="lbl">Done</span>
         </div>
       </div>
-      <button class="icon-btn" title="Toggle theme" id="theme-btn">☀️</button>
+      <button class="icon-btn" title="Toggle theme" aria-label="Toggle theme" id="theme-btn">☀️</button>
     </div>
   </div>
 
@@ -79,18 +79,18 @@
   </div>
 
   <!-- TABS -->
-  <div class="app-tabs">
-    <button class="tab-btn active" data-tab="today">[ TODAY ]</button>
-    <button class="tab-btn" data-tab="grid">[ GRID ]</button>
-    <button class="tab-btn" data-tab="stats">[ STATS ]</button>
-    <button class="tab-btn" data-tab="gallery">[ PHOTOS ]</button>
-    <button class="tab-btn" data-tab="books">[ BOOKS ]</button>
-    <button class="tab-btn" data-tab="drinks">[ DRINKS ]</button>
-    <button class="tab-btn" data-tab="export">[ EXPORT ]</button>
+  <div class="app-tabs" role="tablist">
+    <button class="tab-btn active" role="tab" aria-selected="true" data-tab="today">[ TODAY ]</button>
+    <button class="tab-btn" role="tab" aria-selected="false" data-tab="grid">[ GRID ]</button>
+    <button class="tab-btn" role="tab" aria-selected="false" data-tab="stats">[ STATS ]</button>
+    <button class="tab-btn" role="tab" aria-selected="false" data-tab="gallery">[ PHOTOS ]</button>
+    <button class="tab-btn" role="tab" aria-selected="false" data-tab="books">[ BOOKS ]</button>
+    <button class="tab-btn" role="tab" aria-selected="false" data-tab="drinks">[ DRINKS ]</button>
+    <button class="tab-btn" role="tab" aria-selected="false" data-tab="export">[ EXPORT ]</button>
   </div>
 
   <!-- TODAY TAB -->
-  <div class="tab-panel active" id="tab-today">
+  <div class="tab-panel active" role="tabpanel" id="tab-today">
     <div class="current-day-banner">
       <div class="day-number-display">
         <span class="num" id="current-day-num">1</span>
@@ -148,7 +148,7 @@
   </div>
 
   <!-- GRID TAB -->
-  <div class="tab-panel" id="tab-grid">
+  <div class="tab-panel" role="tabpanel" id="tab-grid">
     <div class="section">
       <div class="section-title">MISSION OVERVIEW</div>
       <div class="day-grid" id="day-grid"></div>
@@ -156,7 +156,7 @@
   </div>
 
   <!-- STATS TAB -->
-  <div class="tab-panel" id="tab-stats">
+  <div class="tab-panel" role="tabpanel" id="tab-stats">
     <div class="section">
       <div class="section-title">PERFORMANCE STATS</div>
       <div class="stats-grid" id="stats-grid"></div>
@@ -176,7 +176,7 @@
   </div>
 
   <!-- GALLERY TAB -->
-  <div class="tab-panel" id="tab-gallery">
+  <div class="tab-panel" role="tabpanel" id="tab-gallery">
     <div class="section">
       <div class="section-title">PROGRESS GALLERY</div>
       <div class="gallery-grid" id="gallery-grid"></div>
@@ -195,7 +195,7 @@
   </div>
 
   <!-- BOOKS TAB -->
-  <div class="tab-panel" id="tab-books">
+  <div class="tab-panel" role="tabpanel" id="tab-books">
     <div class="section">
       <div class="section-title">BOOK TRACKER</div>
       <div class="book-card">
@@ -218,7 +218,7 @@
   </div>
 
   <!-- DRINKS TAB -->
-  <div class="tab-panel" id="tab-drinks">
+  <div class="tab-panel" role="tabpanel" id="tab-drinks">
     <div class="section">
       <div class="section-title">WEEKLY INTAKE LOG</div>
       <div class="drinks-panel">
@@ -233,7 +233,7 @@
   </div>
 
   <!-- EXPORT TAB -->
-  <div class="tab-panel" id="tab-export">
+  <div class="tab-panel" role="tabpanel" id="tab-export">
     <div class="export-section">
       <div class="section-title">DATA MANAGEMENT</div>
       <div class="export-info">
@@ -260,7 +260,7 @@
         <div class="modal-day-title" id="modal-title">DAY 1</div>
         <div class="modal-date-sub" id="modal-date"></div>
       </div>
-      <button class="modal-close">[ CLOSE ]</button>
+      <button class="modal-close" aria-label="Close">[ CLOSE ]</button>
     </div>
     <div class="task-list" id="modal-task-list"></div>
     <div class="modal-note" id="modal-note-wrap">
@@ -273,7 +273,7 @@
 <!-- LIGHTBOX -->
 <div class="lightbox" id="lightbox">
   <img id="lightbox-img" src="" alt="Progress photo">
-  <button class="lightbox-close">[ CLOSE ]</button>
+  <button class="lightbox-close" aria-label="Close">[ CLOSE ]</button>
 </div>
 
 <!-- CONFIRM -->
