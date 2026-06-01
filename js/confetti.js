@@ -1,5 +1,6 @@
 /** @file Day-complete celebration confetti effect. */
 import { isDayComplete } from './state.js';
+import { getSettings, reducedMotionActive } from './settings.js';
 
 let lastAnimatedDay=null;
 
@@ -8,11 +9,10 @@ let lastAnimatedDay=null;
  * @returns {void}
  */
 export function fireConfetti(){
-  // Respect the user's reduced-motion preference — skip the visual
-  // celebration entirely (completion state still toggles via the caller).
-  if(typeof window!=='undefined'&&window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches){
-    return;
-  }
+  // Respect the user's settings — both the explicit "confetti off" toggle
+  // and any reduced-motion preference (OS-level or forced via settings).
+  if(!getSettings().confetti) return;
+  if(reducedMotionActive()) return;
   const c=document.getElementById('confetti-container');c.innerHTML='';c.classList.add('active');
   const colors=['#ff3c00','#f5c400','#00e676','#00b0ff','#ff1744','#ffffff','#d500f9'];
   for(let i=0;i<100;i++){

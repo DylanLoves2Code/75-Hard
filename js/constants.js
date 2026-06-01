@@ -14,6 +14,9 @@ export const STORAGE_KEY = '75hard_v2';
 /** localStorage key for the light/dark theme preference. */
 export const THEME_KEY = '75hard_theme';
 
+/** localStorage key for user-customizable app settings (see js/settings.js). */
+export const SETTINGS_KEY = '75hard_settings';
+
 /**
  * Conservative localStorage quota (bytes). Real browser quotas vary
  * (Safari/iOS Safari ~5 MB per origin; desktop browsers often ~10 MB),

@@ -5,6 +5,7 @@ import { showToast } from './toast.js';
 import { stopCountdown } from './countdown.js';
 import { stopQuoteRotation } from './quotes.js';
 import { resetAnimatedDay } from './confetti.js';
+import { getSettings } from './settings.js';
 
 /** Trigger a JSON download of the current saved state. @returns {void} */
 export function exportData(){
@@ -29,7 +30,12 @@ export function cancelReset(){document.getElementById('confirm-overlay').classLi
  */
 export function executeReset(){
   localStorage.removeItem(STORAGE_KEY);
-  for(let d=1;d<=TOTAL;d++)localStorage.removeItem(photoKey(d));
+  // The `forgetPhotosOnReset` setting (default true) preserves the
+  // legacy behavior. When unchecked, the user keeps their photo blobs
+  // — useful if they want to re-import state later or browse history.
+  if(getSettings().forgetPhotosOnReset){
+    for(let d=1;d<=TOTAL;d++)localStorage.removeItem(photoKey(d));
+  }
   document.getElementById('confirm-overlay').classList.remove('open');
   document.getElementById('app').style.display='none';
   document.getElementById('setup-screen').classList.add('active');

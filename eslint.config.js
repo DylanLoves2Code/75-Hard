@@ -16,6 +16,7 @@ export default [
         navigator: 'readonly',
         location: 'readonly',
         history: 'readonly',
+        URLSearchParams: 'readonly',
         // Storage / Web APIs the app actually uses
         localStorage: 'readonly',
         sessionStorage: 'readonly',

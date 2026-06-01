@@ -1,6 +1,7 @@
 /** @file Stats tab — overview cards plus weekly/weight/sleep bar charts. */
 import { TOTAL } from './constants.js';
 import { getDayData, isDayComplete, calcCurrentDay, calcStreak, countCompleteDays } from './state.js';
+import { getSettings, lbsToKg } from './settings.js';
 
 /**
  * Render the stats overview cards and bar charts from saved state.
@@ -28,8 +29,16 @@ export function renderStats(s){
     const m=s.metrics&&s.metrics[d];
     if(m){if(m.weight)weights.push(m.weight);if(m.sleep)sleeps.push(m.sleep);}
   }
-  const avgW=weights.length?Math.round(weights.reduce((a,b)=>a+b,0)/weights.length*10)/10:null;
+  const avgWLbs=weights.length?weights.reduce((a,b)=>a+b,0)/weights.length:null;
   const avgS=sleeps.length?Math.round(sleeps.reduce((a,b)=>a+b,0)/sleeps.length*10)/10:null;
+
+  // Presentation-only conversion: stored values stay in lbs.
+  const unit=getSettings().weightUnit==='kg'?'kg':'lbs';
+  const avgW=avgWLbs===null?null:(unit==='kg'?lbsToKg(avgWLbs):Math.round(avgWLbs*10)/10);
+  const weightLabel=unit==='kg'?'Avg Weight (kg)':'Avg Weight (lbs)';
+  const weightChartTitle=unit==='kg'?'// WEIGHT TREND (kg)':'// WEIGHT TREND (lbs)';
+  const weightChartTitleEl=document.querySelector('#tab-stats .chart-wrap:nth-of-type(2) .chart-title');
+  if(weightChartTitleEl)weightChartTitleEl.textContent=weightChartTitle;
 
   const grid=document.getElementById('stats-grid');
   grid.innerHTML=`
@@ -37,7 +46,7 @@ export function renderStats(s){
     <div class="stat-card green"><div class="stat-card-val">${done}</div><div class="stat-card-lbl">Days Complete</div></div>
     <div class="stat-card gold"><div class="stat-card-val">${pct}%</div><div class="stat-card-lbl">Progress</div></div>
     <div class="stat-card blue"><div class="stat-card-val">${today}</div><div class="stat-card-lbl">Days In</div></div>
-    <div class="stat-card purple"><div class="stat-card-val">${avgW||'—'}</div><div class="stat-card-lbl">Avg Weight (lbs)</div></div>
+    <div class="stat-card purple"><div class="stat-card-val">${avgW||'—'}</div><div class="stat-card-lbl">${weightLabel}</div></div>
     <div class="stat-card" style="border-left-color:var(--blue)"><div class="stat-card-val">${avgS||'—'}</div><div class="stat-card-lbl">Avg Sleep (hrs)</div></div>
     <div class="stat-card" style="border-left-color:var(--red);grid-column:1/-1"><div class="stat-card-val" style="font-size:1.2rem;">${taskNames[missIdx]}</div><div class="stat-card-lbl">Most Missed Task (${missCount[mostMissed]} times)</div></div>
   `;
@@ -72,9 +81,13 @@ export function buildWeeklyCompletionData(s){
  */
 export function buildMetricData(s,key){
   const today=calcCurrentDay();const data=[];
+  const toKg=key==='weight'&&getSettings().weightUnit==='kg';
   for(let d=1;d<=today;d++){
     const m=s.metrics&&s.metrics[d];
-    if(m&&m[key])data.push({label:'D'+d,value:m[key]});
+    if(m&&m[key]){
+      const v=toKg?lbsToKg(m[key]):m[key];
+      data.push({label:'D'+d,value:v});
+    }
   }
   return data;
 }
