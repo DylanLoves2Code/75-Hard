@@ -9,7 +9,7 @@
  * fine because the photos are already JPEG-compressed.
  */
 import { TOTAL, STORAGE_KEY, photoKey } from './constants.js';
-import { getState, saveState, migrate } from './state.js';
+import { getState, saveState, migrate, calcCurrentDay } from './state.js';
 import { showToast } from './toast.js';
 import { stopCountdown } from './countdown.js';
 import { stopQuoteRotation } from './quotes.js';
@@ -17,6 +17,7 @@ import { resetAnimatedDay } from './confetti.js';
 import { getSettings } from './settings.js';
 import { emit } from './bus.js';
 import { buildIcs } from './ics.js';
+import { generateShareUrl } from './share.js';
 
 /**
  * Build the 150-event .ics calendar from the current state + user
@@ -46,6 +47,53 @@ export function exportIcs(){
   document.body.appendChild(a); a.click();
   document.body.removeChild(a); URL.revokeObjectURL(url);
   showToast('Calendar exported');
+}
+
+/**
+ * Generate a read-only share URL (w5c item 44) and reveal the inline
+ * input on the Export tab so the user can copy it. Wires up COPY +
+ * CLOSE handlers on first click; safe to call repeatedly because the
+ * wiring is idempotent (we replace the input value each time).
+ * @returns {void}
+ */
+export function generateAndShowShareLink(){
+  const s = getState();
+  if(!s){ alert('No data to share yet.'); return; }
+  const url = generateShareUrl(s, calcCurrentDay());
+  const wrap = document.getElementById('share-link-wrap');
+  const input = document.getElementById('share-link-input');
+  if(!wrap || !input){
+    // Defensive — should never trip in the real DOM but keeps tests sane.
+    showToast('Share link generated');
+    return;
+  }
+  input.value = url;
+  wrap.style.display = 'block';
+  input.focus();
+  input.select();
+  const copyBtn = document.getElementById('share-link-copy');
+  if(copyBtn && !copyBtn.dataset.wired){
+    copyBtn.dataset.wired = '1';
+    copyBtn.addEventListener('click', () => {
+      input.focus();
+      input.select();
+      let copied = false;
+      try{
+        if(navigator && navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(input.value);
+          copied = true;
+        }
+      }catch(_e){ /* fall back to manual copy */ }
+      showToast(copied ? 'Share link copied' : 'Select the link and copy manually');
+    });
+  }
+  const closeBtn = document.getElementById('share-link-close');
+  if(closeBtn && !closeBtn.dataset.wired){
+    closeBtn.dataset.wired = '1';
+    closeBtn.addEventListener('click', () => {
+      wrap.style.display = 'none';
+    });
+  }
 }
 
 /** Trigger a JSON download of the current saved state. @returns {void} */
