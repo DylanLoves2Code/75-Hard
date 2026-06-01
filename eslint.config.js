@@ -24,6 +24,11 @@ export default [
         Blob: 'readonly',
         URL: 'readonly',
         alert: 'readonly',
+        // Binary helpers used by the JSON/ZIP import + export paths.
+        atob: 'readonly',
+        btoa: 'readonly',
+        TextEncoder: 'readonly',
+        TextDecoder: 'readonly',
         // Timers
         setTimeout: 'readonly',
         clearTimeout: 'readonly',

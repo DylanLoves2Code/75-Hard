@@ -239,10 +239,15 @@
       <div class="section-title">DATA MANAGEMENT</div>
       <div class="export-info">
         Export downloads all your challenge data as a JSON file.<br>
-        Photos are NOT included in the export to keep file size manageable.<br>
-        Store this file as your backup.
+        Photos are NOT included in the JSON — use EXPORT PHOTOS (ZIP) for those.<br>
+        Store both files together as your backup.
       </div>
-      <button class="btn-export">⬇ EXPORT DATA</button>
+      <button class="btn-export" id="btn-export-data">⬇ EXPORT DATA</button>
+      <button class="btn-export" id="btn-import-data">⬆ IMPORT DATA</button>
+      <button class="btn-export" id="btn-export-photos">⬇ EXPORT PHOTOS (ZIP)</button>
+      <button class="btn-export" id="btn-import-photos">⬆ IMPORT PHOTOS (ZIP)</button>
+      <input type="file" id="import-file-input" accept=".json,application/json" style="display:none;">
+      <input type="file" id="import-zip-input" accept=".zip,application/zip" style="display:none;">
       <div style="margin:1.5rem 0;border-top:1px solid var(--border);"></div>
       <div class="export-info" style="border-left-color:var(--red);color:var(--red);">
         ⚠ DANGER ZONE — Resetting will permanently erase ALL data including photos.
@@ -285,6 +290,18 @@
     <div class="confirm-btns">
       <button class="btn-danger">CONFIRM</button>
       <button class="btn-cancel">STAND DOWN</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT CONFIRM -->
+<div class="confirm-overlay" id="import-overlay">
+  <div class="confirm-box import-confirm-box">
+    <div class="confirm-title">IMPORT DATA?</div>
+    <div class="confirm-body" id="import-confirm-body"></div>
+    <div class="confirm-btns">
+      <button class="btn-danger" id="btn-import-confirm">IMPORT</button>
+      <button class="btn-cancel" id="btn-import-cancel">CANCEL</button>
     </div>
   </div>
 </div>

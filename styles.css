@@ -310,6 +310,12 @@ input[type="file"]{display:none;}
 .btn-danger:hover{opacity:0.85;}
 .btn-cancel{background:transparent;border:1px solid var(--border2);color:var(--text2);font-family:var(--font-d);font-size:1.1rem;letter-spacing:0.1em;padding:0.55rem 1.25rem;cursor:pointer;flex:1;transition:all 0.2s;}
 .btn-cancel:hover{border-color:var(--text2);color:var(--text);}
+/* Import confirm: wider than the reset modal so diff lines don't wrap awkwardly,
+   and recoloured from red (destructive) to accent (informational). */
+.import-confirm-box{max-width:480px;border-color:var(--accent);}
+.import-confirm-box .confirm-title{color:var(--accent);}
+.import-confirm-box .confirm-body strong{color:var(--text);}
+.import-confirm-box .btn-danger{background:var(--accent);}
 
 /* CONFETTI */
 .confetti-container{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:90;overflow:hidden;display:none;}
