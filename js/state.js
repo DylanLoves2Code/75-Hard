@@ -23,17 +23,25 @@ import { showToast } from './toast.js';
  * are filled in by {@link getDayData} from `DAY_DEFAULTS`.
  *
  * @typedef {Object} DayData
- * @property {boolean} calorie    "Calorie deficit" task done.
- * @property {boolean} w1         "Workout 1" task done.
- * @property {boolean} w2         "Workout 2" task done.
- * @property {boolean} read       "Read 10 pages" task done.
- * @property {boolean} water      "1 gallon water" task done (true when waterCups >= WATER_CUPS).
- * @property {boolean} photo      "Progress photo" task done.
- * @property {string}  w1label    Custom label for Workout 1.
- * @property {string}  w2label    Custom label for Workout 2.
- * @property {number}  waterCups  Number of 8 oz cups marked filled (0..WATER_CUPS).
- *                                Older saved states predate this field and merge
- *                                to 0 via DAY_DEFAULTS.
+ * @property {boolean} calorie         Legacy "Calorie deficit" field kept for back-compat;
+ *                                     v3 introduces {@link DayData.dietAdherence} as the
+ *                                     primary "Follow Diet" flag and migrations copy any
+ *                                     existing value across to both.
+ * @property {boolean} dietAdherence   "Follow Diet" task done (v3+). Either this or `calorie`
+ *                                     satisfies {@link isDayComplete}'s diet slot.
+ * @property {string}  [dietNote]      Optional free-text "what I ate" note for the day.
+ * @property {boolean} w1              "Workout 1" task done.
+ * @property {boolean} w2              "Workout 2" task done.
+ * @property {boolean} w1outdoor       Whether Workout 1 was outdoors (v3+, defaults false).
+ * @property {boolean} w2outdoor       Whether Workout 2 was outdoors (v3+, defaults false).
+ * @property {boolean} read            "Read 10 pages" task done.
+ * @property {boolean} water           "1 gallon water" task done (true when waterCups >= WATER_CUPS).
+ * @property {boolean} photo           "Progress photo" task done.
+ * @property {string}  w1label         Custom label for Workout 1.
+ * @property {string}  w2label         Custom label for Workout 2.
+ * @property {number}  waterCups       Number of 8 oz cups marked filled (0..WATER_CUPS).
+ *                                     Older saved states predate this field and merge
+ *                                     to 0 via DAY_DEFAULTS.
  */
 
 /**
@@ -43,20 +51,25 @@ import { showToast } from './toast.js';
  * @property {number} version                         Schema version. See {@link CURRENT_SCHEMA_VERSION}.
  * @property {string} startDate                       ISO "YYYY-MM-DD" start date.
  * @property {string} name                            Display name (uppercase).
+ * @property {{name:string,customText:string}} [diet] Chosen diet (v3+). `name` is one of the
+ *                                                    fixed options (Paleo/Keto/IIFYM/Whole30/
+ *                                                    Carnivore/Vegan) or 'Custom'; when 'Custom',
+ *                                                    `customText` carries the user's label.
  * @property {Object<string,DayData>} days            Map of day index (1..75) to DayData.
  * @property {Object<string,number>} drinks           Map of ISO week index (1-based) to drink count.
- * @property {Object<string,{title:string,pages:number}>} books   Daily book entries.
+ * @property {Object<string,{title:string,pages:number,nonfiction:boolean}>} books   Daily book entries.
+ *                                                    `nonfiction` is v3+ and defaults to true.
  * @property {Object<string,{weight:?number,sleep:?number}>} metrics  Daily weight/sleep metrics.
  * @property {Object<string,string>} notes            Daily field notes (free text).
  */
 
-const DAY_DEFAULTS=Object.freeze({calorie:false,w1:false,w2:false,read:false,water:false,photo:false,w1label:'Workout 1',w2label:'Workout 2',waterCups:0});
+const DAY_DEFAULTS=Object.freeze({calorie:false,dietAdherence:false,dietNote:'',w1:false,w2:false,w1outdoor:false,w2outdoor:false,read:false,water:false,photo:false,w1label:'Workout 1',w2label:'Workout 2',waterCups:0});
 
 /**
  * The schema version this build of the app writes. Bumped whenever the
  * shape of stored state changes; {@link migrate} handles upgrades.
  */
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
 
 /**
  * Parse a "YYYY-MM-DD" string as a Date at LOCAL midnight (not UTC).
@@ -98,6 +111,50 @@ const MIGRATIONS=[
       // Same shape as undefined -> 2 (the original release never wrote
       // an explicit version: 1, but accept it for safety).
       s.version=2;
+    },
+  },
+  {
+    from:2,to:3,
+    run:(s)=>{
+      // v3: 75 Hard rule fidelity pass.
+      //   - Adds top-level `s.diet` ({name, customText}) populated at
+      //     setup. Pre-v3 users have no diet picked, so we seed a safe
+      //     'Custom' / 'Unknown' default they can correct later.
+      //   - Renames the per-day "calorie" slot to "dietAdherence". The
+      //     legacy key is preserved alongside the new one so old grids
+      //     keep rendering the historical check, and isDayComplete will
+      //     accept either field.
+      //   - Adds optional per-day `dietNote` (string, empty by default).
+      //   - Adds per-day `w1outdoor` / `w2outdoor` booleans (false by
+      //     default) used to surface the "one outdoor workout" caveat.
+      //   - Adds `nonfiction:true` to every existing book entry so
+      //     historical reads default to the rules-compliant variety.
+      if(!s.diet){
+        s.diet={name:'Custom',customText:'Unknown'};
+      }
+      if(s.days&&typeof s.days==='object'){
+        for(const k in s.days){
+          const dd=s.days[k];
+          if(!dd||typeof dd!=='object')continue;
+          // Copy the legacy `calorie` value into `dietAdherence` if the
+          // new field is absent. Keep `calorie` itself so reads against
+          // older code paths still show the historical tick.
+          if(dd.dietAdherence===undefined){
+            dd.dietAdherence=dd.calorie===true;
+          }
+          if(dd.dietNote===undefined)dd.dietNote='';
+          if(dd.w1outdoor===undefined)dd.w1outdoor=false;
+          if(dd.w2outdoor===undefined)dd.w2outdoor=false;
+        }
+      }
+      if(s.books&&typeof s.books==='object'){
+        for(const k in s.books){
+          const b=s.books[k];
+          if(!b||typeof b!=='object')continue;
+          if(b.nonfiction===undefined)b.nonfiction=true;
+        }
+      }
+      s.version=3;
     },
   },
 ];
@@ -236,10 +293,19 @@ export function checkStorageUsage(){
  * Build a fresh empty state for a new challenge run.
  * @param {string} start  ISO "YYYY-MM-DD" start date.
  * @param {string} [name] Optional display name.
+ * @param {{name:string,customText:string}} [diet] Optional diet selection.
+ *   Defaults to `{name:'Custom',customText:''}` so {@link migrate} from
+ *   pre-v3 states and the fresh setup path share the same shape.
  * @returns {State}
  */
-export function defaultState(start,name){
-  return {version:CURRENT_SCHEMA_VERSION,startDate:start,name:name||'',days:{},drinks:{},books:{},metrics:{},notes:{}};
+export function defaultState(start,name,diet){
+  return {
+    version:CURRENT_SCHEMA_VERSION,
+    startDate:start,
+    name:name||'',
+    diet:diet||{name:'Custom',customText:''},
+    days:{},drinks:{},books:{},metrics:{},notes:{},
+  };
 }
 
 /**
@@ -267,13 +333,18 @@ export function updateDayData(s,d,patch){
 
 /**
  * True iff all six core tasks for day `d` are marked done.
+ *
+ * v3 renamed "calorie" to "dietAdherence". To stay back-compatible with
+ * older day records (and with imported pre-v3 backups that have only the
+ * legacy field), the diet slot is satisfied by either flag.
  * @param {State} s
  * @param {number} d
  * @returns {boolean}
  */
 export function isDayComplete(s,d){
   const dd=getDayData(s,d);
-  return dd.calorie&&dd.w1&&dd.w2&&dd.read&&dd.water&&dd.photo;
+  const diet=dd.dietAdherence||dd.calorie;
+  return !!(diet&&dd.w1&&dd.w2&&dd.read&&dd.water&&dd.photo);
 }
 
 /**

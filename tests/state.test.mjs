@@ -343,6 +343,132 @@ test('getState migrates a pre-versioned saved blob and persists the upgrade', ()
   assert.equal(onDisk.name, 'LEGACY');
 });
 
+// --- v3 schema migration ---------------------------------------------------
+
+test('v3: migrate copies legacy `calorie` into `dietAdherence` and defaults outdoor flags', () => {
+  // Pre-v3 day record only has `calorie`; expect dietAdherence to mirror
+  // it, w1outdoor/w2outdoor to default to false, and the legacy field
+  // to remain untouched so older code paths still see a tick.
+  const raw = {
+    version: 2,
+    startDate: '2025-01-01',
+    name: 'OLD',
+    days: {
+      1: { calorie: true, w1: true, w2: true, read: true, water: true, photo: true },
+      2: { calorie: false, w1: true },
+    },
+    drinks: {}, books: {}, metrics: {}, notes: {},
+  };
+  const { state, migrated } = migrate(raw);
+  assert.equal(migrated, true);
+  assert.equal(state.version, CURRENT_SCHEMA_VERSION);
+  assert.equal(state.days[1].dietAdherence, true);
+  assert.equal(state.days[1].calorie, true, 'legacy calorie preserved');
+  assert.equal(state.days[1].w1outdoor, false);
+  assert.equal(state.days[1].w2outdoor, false);
+  assert.equal(state.days[2].dietAdherence, false);
+  assert.equal(state.days[2].w1outdoor, false);
+  assert.equal(state.days[2].w2outdoor, false);
+});
+
+test('v3: migrate seeds a safe default diet when none was set', () => {
+  const raw = {
+    version: 2,
+    startDate: '2025-01-01',
+    name: 'OLD',
+    days: {}, drinks: {}, books: {}, metrics: {}, notes: {},
+  };
+  const { state } = migrate(raw);
+  assert.equal(state.diet.name, 'Custom');
+  assert.equal(state.diet.customText, 'Unknown');
+});
+
+test('v3: migrate preserves an existing diet selection on a partial v2 blob', () => {
+  // If a future re-import contains a state already at v3 shape, we leave
+  // it alone. (The migrate chain is a no-op once at CURRENT.)
+  const raw = {
+    version: 2,
+    startDate: '2025-01-01',
+    name: 'X',
+    diet: { name: 'Paleo', customText: '' },
+    days: {}, drinks: {}, books: {}, metrics: {}, notes: {},
+  };
+  const { state } = migrate(raw);
+  assert.equal(state.version, CURRENT_SCHEMA_VERSION);
+  assert.equal(state.diet.name, 'Paleo');
+});
+
+test('v3: migrate defaults existing book entries to nonfiction:true', () => {
+  const raw = {
+    version: 2,
+    startDate: '2025-01-01',
+    name: 'X',
+    days: {},
+    drinks: {},
+    books: {
+      1: { title: 'Atomic Habits', pages: 30 },
+      4: { title: 'War & Peace', pages: 50, nonfiction: false },
+      9: { title: 'Cant Hurt Me', pages: 15, nonfiction: true },
+    },
+    metrics: {}, notes: {},
+  };
+  const { state } = migrate(raw);
+  assert.equal(state.books[1].nonfiction, true, 'missing flag defaults true');
+  assert.equal(state.books[4].nonfiction, false, 'explicit fiction preserved');
+  assert.equal(state.books[9].nonfiction, true);
+});
+
+test('v3: migrate is idempotent — already-v3 state passes through unchanged', () => {
+  const raw = {
+    version: 3,
+    startDate: '2025-01-01',
+    name: 'X',
+    diet: { name: 'Keto', customText: '' },
+    days: { 1: { dietAdherence: true, w1outdoor: true } },
+    drinks: {}, books: {}, metrics: {}, notes: {},
+  };
+  const { state, migrated } = migrate(raw);
+  assert.equal(migrated, false);
+  assert.equal(state.diet.name, 'Keto');
+  assert.equal(state.days[1].w1outdoor, true);
+});
+
+test('v3: migrate walks undefined -> 3 (pre-versioned legacy state)', () => {
+  // Pre-versioned states (no `version` key) walk through the entire
+  // chain: undefined -> 2 -> 3.
+  const raw = {
+    startDate: '2025-01-01',
+    name: 'LEGACY',
+    days: { 5: { calorie: true } },
+    drinks: {}, books: {}, metrics: {}, notes: {},
+  };
+  const { state, migrated } = migrate(raw);
+  assert.equal(migrated, true);
+  assert.equal(state.version, CURRENT_SCHEMA_VERSION);
+  assert.equal(state.days[5].dietAdherence, true);
+  assert.equal(state.days[5].w1outdoor, false);
+  assert.equal(state.diet.name, 'Custom');
+});
+
+test('v3: isDayComplete accepts either dietAdherence or legacy calorie', () => {
+  const s = defaultState('2025-01-01', 'X');
+  // dietAdherence-driven completion (v3-native day record).
+  updateDayData(s, 1, {
+    dietAdherence: true, w1: true, w2: true, read: true, water: true, photo: true,
+  });
+  assert.equal(isDayComplete(s, 1), true);
+  // Legacy-only `calorie` should also satisfy the diet slot.
+  updateDayData(s, 2, {
+    calorie: true, w1: true, w2: true, read: true, water: true, photo: true,
+  });
+  assert.equal(isDayComplete(s, 2), true);
+  // Neither => not complete.
+  updateDayData(s, 3, {
+    dietAdherence: false, calorie: false, w1: true, w2: true, read: true, water: true, photo: true,
+  });
+  assert.equal(isDayComplete(s, 3), false);
+});
+
 // --- storage usage ---------------------------------------------------------
 
 test('getStorageUsageBytes counts state JSON and photo blobs', () => {

@@ -49,11 +49,15 @@ export function renderReport(s){
   const avgS=sN?(Math.round((sSum/sN)*10)/10).toFixed(1):'—';
 
   const taskKeys=TASKS.map(t=>t.key);
-  const taskNames={calorie:'Calorie',w1:'WO1',w2:'WO2',read:'Read',water:'Water',photo:'Photo'};
+  const taskNames={dietAdherence:'Diet',calorie:'Diet',w1:'WO1',w2:'WO2',read:'Read',water:'Water',photo:'Photo'};
   const miss={};taskKeys.forEach(k=>miss[k]=0);
   for(let d=1;d<=today;d++){
     const dd=getDayData(s,d);
-    taskKeys.forEach(k=>{if(!dd[k])miss[k]++;});
+    taskKeys.forEach(k=>{
+      // Diet slot accepts the legacy `calorie` field as well.
+      const done=k==='dietAdherence'?(dd.dietAdherence||dd.calorie):dd[k];
+      if(!done)miss[k]++;
+    });
   }
   const mostMissedKey=taskKeys.reduce((a,b)=>miss[a]>=miss[b]?a:b);
   const mostMissed=`${taskNames[mostMissedKey]} (${miss[mostMissedKey]})`;
@@ -63,7 +67,7 @@ export function renderReport(s){
   for(let d=1;d<=TOTAL;d++){
     const complete=isDayComplete(s,d);
     const dd=getDayData(s,d);
-    const any=dd.calorie||dd.w1||dd.w2||dd.read||dd.water||dd.photo;
+    const any=dd.dietAdherence||dd.calorie||dd.w1||dd.w2||dd.read||dd.water||dd.photo;
     let cls='report-tile';
     if(complete)cls+=' complete';
     else if(any&&d<=today)cls+=' partial';

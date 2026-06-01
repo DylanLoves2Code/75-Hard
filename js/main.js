@@ -67,7 +67,22 @@ export function renderAll(s){
   renderNoteInput(s,day);
 
   const banner=document.getElementById('complete-banner');
-  isDayComplete(s,day)?banner.classList.add('visible'):banner.classList.remove('visible');
+  const complete=isDayComplete(s,day);
+  complete?banner.classList.add('visible'):banner.classList.remove('visible');
+  // Soft caveat: 75 Hard requires one outdoor workout/day. Surface a
+  // yellow nudge in the complete banner when neither slot was outdoors.
+  const caveatEl=document.getElementById('complete-caveat');
+  if(caveatEl){
+    if(complete){
+      const dd=s.days&&s.days[day];
+      const outdoor=dd&&(dd.w1outdoor||dd.w2outdoor);
+      caveatEl.textContent=outdoor?'':'// REMINDER — 75 Hard requires one outdoor workout per day.';
+      caveatEl.style.display=outdoor?'none':'block';
+    } else {
+      caveatEl.textContent='';
+      caveatEl.style.display='none';
+    }
+  }
 
   renderDrinksLog(s);
   renderGrid(s);
@@ -93,7 +108,11 @@ function initChallenge(){
   const val=document.getElementById('start-date-input').value;
   if(!val){alert('Please select a start date.');return;}
   const name=document.getElementById('setup-name-input').value.trim().toUpperCase()||'SOLDIER';
-  const s=defaultState(val,name);
+  const dietSelect=document.getElementById('setup-diet-select');
+  const dietCustom=document.getElementById('setup-diet-custom');
+  const dietName=dietSelect?dietSelect.value:'Custom';
+  const customText=dietName==='Custom'?(dietCustom?dietCustom.value.trim():''):'';
+  const s=defaultState(val,name,{name:dietName,customText});
   saveState(s);
   document.getElementById('setup-screen').classList.remove('active');
   document.getElementById('app').style.display='block';
@@ -151,6 +170,14 @@ function boot(){
 
 function wireStaticHandlers(){
   document.querySelector('#setup-screen .btn-primary').addEventListener('click',initChallenge);
+  // Setup-screen diet select: reveal the custom text input only when needed.
+  const dietSelect=document.getElementById('setup-diet-select');
+  const dietCustom=document.getElementById('setup-diet-custom');
+  if(dietSelect&&dietCustom){
+    dietSelect.addEventListener('change',()=>{
+      dietCustom.style.display=dietSelect.value==='Custom'?'block':'none';
+    });
+  }
   document.getElementById('theme-btn').addEventListener('click',toggleTheme);
 
   // Settings panel — header gear icon opens it; modal has save/cancel/close.

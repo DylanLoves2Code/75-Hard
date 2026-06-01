@@ -49,10 +49,15 @@ export const photoKey = d => 'photo_day_' + d;
 
 /**
  * Ordered list of the six daily objectives.
+ *
+ * Slot 0 holds the diet-adherence task. v3 renamed it from `calorie`
+ * (vague "calorie deficit") to `dietAdherence` ("Follow Diet"). The
+ * historical key is still accepted by {@link isDayComplete} for
+ * back-compat with pre-v3 day records.
  * @type {TaskDef[]}
  */
 export const TASKS = [
-  {key:'calorie',label:'Calorie Deficit',icon:'🔥',single:true},
+  {key:'dietAdherence',label:'Follow Diet',icon:'🔥',single:true},
   {key:'w1',label:'Workout 1',icon:'💪',single:true,customLabel:true},
   {key:'w2',label:'Workout 2',icon:'🏋️',single:true,customLabel:true},
   {key:'read',label:'Read 10 Pages',icon:'📖',single:true},

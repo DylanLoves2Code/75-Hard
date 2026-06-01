@@ -14,15 +14,31 @@ export function renderStats(s){
   const streak=calcStreak(s);
   const pct=Math.round((done/TOTAL)*100);
 
-  const taskKeys=['calorie','w1','w2','read','water','photo'];
-  const taskNames=['Calorie','WO1','WO2','Read','Water','Photo'];
+  const taskKeys=['dietAdherence','w1','w2','read','water','photo'];
+  const taskNames=['Diet','WO1','WO2','Read','Water','Photo'];
   let missCount={};taskKeys.forEach(k=>missCount[k]=0);
   for(let d=1;d<=today;d++){
     const dd=getDayData(s,d);
-    taskKeys.forEach(k=>{if(!dd[k])missCount[k]++;});
+    taskKeys.forEach(k=>{
+      // Diet slot: pre-v3 records only have `calorie`. Accept either.
+      const done=k==='dietAdherence'?(dd.dietAdherence||dd.calorie):dd[k];
+      if(!done)missCount[k]++;
+    });
   }
   const mostMissed=taskKeys.reduce((a,b)=>missCount[a]>missCount[b]?a:b);
   const missIdx=taskKeys.indexOf(mostMissed);
+
+  // % of book entries that were nonfiction (v3+). Pre-v3 entries were
+  // migrated with `nonfiction:true` so legacy data scores 100%.
+  let bookTotal=0,bookNF=0;
+  if(s.books){
+    for(const k in s.books){
+      const b=s.books[k];if(!b)continue;
+      bookTotal++;
+      if(b.nonfiction!==false)bookNF++;
+    }
+  }
+  const nfPct=bookTotal?Math.round((bookNF/bookTotal)*100):null;
 
   let weights=[],sleeps=[];
   for(let d=1;d<=today;d++){
@@ -48,6 +64,7 @@ export function renderStats(s){
     <div class="stat-card blue"><div class="stat-card-val">${today}</div><div class="stat-card-lbl">Days In</div></div>
     <div class="stat-card purple"><div class="stat-card-val">${avgW||'—'}</div><div class="stat-card-lbl">${weightLabel}</div></div>
     <div class="stat-card" style="border-left-color:var(--blue)"><div class="stat-card-val">${avgS||'—'}</div><div class="stat-card-lbl">Avg Sleep (hrs)</div></div>
+    <div class="stat-card purple"><div class="stat-card-val">${nfPct===null?'—':nfPct+'%'}</div><div class="stat-card-lbl">Nonfiction Reads</div></div>
     <div class="stat-card" style="border-left-color:var(--red);grid-column:1/-1"><div class="stat-card-val" style="font-size:1.2rem;">${taskNames[missIdx]}</div><div class="stat-card-lbl">Most Missed Task (${missCount[mostMissed]} times)</div></div>
   `;
 
