@@ -16,8 +16,12 @@ export function renderWaterMeter(s,day){
     bar.className='water-cup'+(i<cups?' filled':'');
     bar.style.height=((i+1)/WATER_CUPS*maxH)+'px';
     bar.title=(i+1)*8+' oz';
+    bar.setAttribute('role','button');
+    bar.setAttribute('aria-label',`8 oz cup ${i+1}`);
+    bar.setAttribute('aria-pressed',i<cups?'true':'false');
     if(!isFuture){
-      bar.addEventListener('click',()=>{
+      bar.setAttribute('tabindex','0');
+      const activate=()=>{
         const s2=getState();
         const d2=getDayData(s2,day);
         d2.waterCups=(i<d2.waterCups)?i:(i+1);
@@ -25,6 +29,13 @@ export function renderWaterMeter(s,day){
         saveState(s2);
         if(day===calcCurrentDay()){checkCompletionAnimation(s2,day);renderAll(s2);}
         else{renderWaterMeter(s2,day);renderGrid(s2);}
+      };
+      bar.addEventListener('click',activate);
+      bar.addEventListener('keydown',e=>{
+        if(e.key==='Enter'||e.key===' '){
+          e.preventDefault();
+          activate();
+        }
       });
     }
     meter.appendChild(bar);

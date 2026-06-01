@@ -25,14 +25,25 @@ export function renderTaskList(s,day,containerId,isToday){
         <span class="task-icon">${t.icon}</span>
         <span class="task-label">${labelText}</span>
       `;
+      el.setAttribute('role','button');
+      el.setAttribute('aria-pressed',done?'true':'false');
+      el.setAttribute('aria-label',labelText);
       if(!isFuture){
-        el.addEventListener('click',()=>{
+        el.setAttribute('tabindex','0');
+        const activate=()=>{
           const s2=getState();
           const d2=getDayData(s2,day);
           d2[t.key]=!d2[t.key];
           saveState(s2);
           if(isToday){checkCompletionAnimation(s2,day);renderAll(s2);}
           else{renderTaskList(s2,day,containerId,false);renderGrid(s2);}
+        };
+        el.addEventListener('click',activate);
+        el.addEventListener('keydown',e=>{
+          if(e.key==='Enter'||e.key===' '){
+            e.preventDefault();
+            activate();
+          }
         });
         if(t.customLabel&&isToday){
           el.addEventListener('contextmenu',e=>{

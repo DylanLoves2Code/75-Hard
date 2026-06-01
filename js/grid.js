@@ -18,7 +18,20 @@ export function renderGrid(s){
     if(isToday)tile.classList.add('today');
     const emoji=complete?'✅':(!future&&any?'🟡':'⬜');
     tile.innerHTML=`<span class="tile-num">${d}</span><span class="tile-emoji">${emoji}</span>`;
-    if(!future)tile.addEventListener('click',()=>openModal(d));
+    if(!future){
+      const status=complete?'complete':(any?'partial':'incomplete');
+      tile.setAttribute('role','button');
+      tile.setAttribute('tabindex','0');
+      tile.setAttribute('aria-label',`Day ${d}, ${status}`);
+      const activate=()=>openModal(d);
+      tile.addEventListener('click',activate);
+      tile.addEventListener('keydown',e=>{
+        if(e.key==='Enter'||e.key===' '){
+          e.preventDefault();
+          activate();
+        }
+      });
+    }
     grid.appendChild(tile);
   }
 }

@@ -275,3 +275,7 @@ input[type="file"]{display:none;}
   .day-grid{grid-template-columns:repeat(auto-fill,minmax(42px,1fr));}
   .stats-grid{grid-template-columns:1fr 1fr;}
 }
+
+.task-item:focus-visible,
+.water-cup:focus-visible,
+.day-tile:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
