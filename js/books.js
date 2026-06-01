@@ -1,6 +1,13 @@
+/** @file Renders and persists the book-reading log on the Books tab. */
 import { getState, saveState, calcCurrentDay } from './state.js';
 import { showToast } from './toast.js';
 
+/**
+ * Re-render the book-log list and total-pages counter into the DOM.
+ * Also pre-fills the title input with the most recent book.
+ * @param {import('./state.js').State} s
+ * @returns {void}
+ */
 export function renderBooks(s){
   const today=calcCurrentDay();
   let total=0;
@@ -24,6 +31,10 @@ export function renderBooks(s){
   document.getElementById('total-pages-read').textContent=total;
 }
 
+/**
+ * Persist the title/pages inputs into today's book entry, then re-render.
+ * @returns {void}
+ */
 export function saveBookEntry(){
   const s=getState();const day=calcCurrentDay();
   if(!s.books)s.books={};

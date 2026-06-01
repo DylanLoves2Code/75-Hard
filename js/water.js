@@ -1,9 +1,17 @@
+/** @file Tappable 16-cup hydration meter on the Today tab. */
 import { WATER_CUPS } from './constants.js';
 import { getState, saveState, getDayData, updateDayData, calcCurrentDay } from './state.js';
 import { checkCompletionAnimation } from './confetti.js';
 import { renderGrid } from './grid.js';
 import { renderAll } from './main.js';
 
+/**
+ * Render the 16-cup water meter for the given day. Clicking cup `i`
+ * either fills up to that cup or clears it if already filled.
+ * @param {import('./state.js').State} s
+ * @param {number} day
+ * @returns {void}
+ */
 export function renderWaterMeter(s,day){
   const dd=getDayData(s,day);
   const cups=dd.waterCups||0;

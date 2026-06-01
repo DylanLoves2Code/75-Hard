@@ -1,0 +1,14 @@
+{
+  "name": "75-hard-tracker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "75 Hard Challenge Tracker — vanilla-JS static SPA.",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "lint": "eslint js/"
+  },
+  "devDependencies": {
+    "eslint": "^9.18.0"
+  }
+}

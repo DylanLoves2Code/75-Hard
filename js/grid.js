@@ -1,7 +1,14 @@
+/** @file 75-tile grid view of the entire challenge on the Grid tab. */
 import { TOTAL } from './constants.js';
 import { getDayData, isDayComplete, calcCurrentDay } from './state.js';
 import { openModal } from './modal.js';
 
+/**
+ * Render all 75 day tiles, wiring click/keyboard activation on past
+ * and current days to open the day-detail modal.
+ * @param {import('./state.js').State} s
+ * @returns {void}
+ */
 export function renderGrid(s){
   const grid=document.getElementById('day-grid');grid.innerHTML='';
   const today=calcCurrentDay();

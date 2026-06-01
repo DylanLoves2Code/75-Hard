@@ -1,5 +1,11 @@
+/** @file Live countdown to the end of the 75-day challenge. */
 let countdownInterval=null;
 
+/**
+ * Recompute and write the four countdown cells (D/H/M/S) into the DOM.
+ * @param {import('./state.js').State} s
+ * @returns {void}
+ */
 export function updateCountdown(s){
   const start=new Date(s.startDate);start.setHours(0,0,0,0);
   const end=new Date(start);end.setDate(end.getDate()+75);
@@ -22,12 +28,18 @@ export function updateCountdown(s){
   document.getElementById('cd-secs').textContent=String(secs).padStart(2,'0');
 }
 
+/**
+ * Begin the 1-second update interval, replacing any prior one.
+ * @param {import('./state.js').State} s
+ * @returns {void}
+ */
 export function startCountdown(s){
   if(countdownInterval)clearInterval(countdownInterval);
   updateCountdown(s);
   countdownInterval=setInterval(()=>updateCountdown(s),1000);
 }
 
+/** Stop the countdown interval (called on reset). @returns {void} */
 export function stopCountdown(){
   if(countdownInterval)clearInterval(countdownInterval);
   countdownInterval=null;

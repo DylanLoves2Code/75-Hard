@@ -1,3 +1,12 @@
+/** @file Rotating motivational-quote banner. */
+
+/**
+ * @typedef {Object} Quote
+ * @property {string} q  Quote text.
+ * @property {string} a  Attribution.
+ */
+
+/** Quote pool used by {@link setQuote}. @type {Quote[]} */
 export const QUOTES = [
   {q:"In war, the victorious strategist only seeks battle after the victory has been won.",a:"— Sun Tzu, The Art of War"},
   {q:"If you know the enemy and know yourself, you need not fear the result of a hundred battles.",a:"— Sun Tzu"},
@@ -41,18 +50,26 @@ export const QUOTES = [
 
 let quoteInterval=null;
 
+/** Pick and render a random quote into the banner. @returns {void} */
 export function setQuote(){
   const q=QUOTES[Math.floor(Math.random()*QUOTES.length)];
   document.getElementById('quote-text').textContent='"'+q.q+'"';
   document.getElementById('quote-attr').textContent=q.a;
 }
 
+/**
+ * Begin the 20s quote-rotation interval.
+ * @param {import('./state.js').State} s  Currently unused; kept for symmetry with other start* helpers.
+ * @returns {void}
+ */
+// eslint-disable-next-line no-unused-vars
 export function startQuoteRotation(s){
   setQuote();
   if(quoteInterval)clearInterval(quoteInterval);
   quoteInterval=setInterval(setQuote,20000);
 }
 
+/** Stop the quote-rotation interval (used on reset). @returns {void} */
 export function stopQuoteRotation(){
   if(quoteInterval)clearInterval(quoteInterval);
   quoteInterval=null;
