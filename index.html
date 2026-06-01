@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>75 HARD — CHALLENGE TRACKER</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Share+Tech+Mono&family=Oswald:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --bg2: #111111;
+    --bg3: #1a1a1a;
+    --border: #2a2a2a;
+    --border2: #333;
+    --text: #e8e8e8;
+    --text2: #888;
+    --text3: #555;
+    --accent: #ff3c00;
+    --accent2: #ff6a00;
+    --gold: #f5c400;
+    --green: #00e676;
+    --yellow: #ffea00;
+    --red: #ff1744;
+    --blue: #00b0ff;
+    --font-display: 'Bebas Neue', sans-serif;
+    --font-mono: 'Share Tech Mono', monospace;
+    --font-body: 'Oswald', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    overflow-x: hidden;
+    cursor: default;
+  }
+
+  /* NOISE TEXTURE OVERLAY */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0.4;
+  }
+
+  /* SETUP SCREEN */
+  #setup-screen {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    padding: 2rem;
+  }
+  #setup-screen.active { display: flex; }
+
+  .setup-box {
+    max-width: 480px;
+    width: 100%;
+    border: 2px solid var(--accent);
+    padding: 3rem 2.5rem;
+    background: var(--bg2);
+    position: relative;
+  }
+  .setup-box::before {
+    content: '';
+    position: absolute;
+    top: -6px; left: -6px; right: -6px; bottom: -6px;
+    border: 1px solid var(--border2);
+    pointer-events: none;
+  }
+
+  .setup-title {
+    font-family: var(--font-display);
+    font-size: clamp(3rem, 10vw, 5rem);
+    color: var(--accent);
+    letter-spacing: 0.05em;
+    line-height: 0.9;
+    margin-bottom: 0.5rem;
+  }
+  .setup-sub {
+    font-family: var(--font-mono);
+    color: var(--text2);
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 2.5rem;
+    border-left: 3px solid var(--accent);
+    padding-left: 0.75rem;
+  }
+  .setup-label {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    color: var(--text2);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+    display: block;
+  }
+  .setup-input {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-left: 3px solid var(--accent);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    padding: 0.75rem 1rem;
+    outline: none;
+    margin-bottom: 2rem;
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+    appearance: none;
+    color-scheme: dark;
+  }
+  .setup-input:focus { border-color: var(--accent2); }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    letter-spacing: 0.1em;
+    border: none;
+    padding: 0.75rem 2.5rem;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    width: 100%;
+    text-transform: uppercase;
+    clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+  }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-primary:active { transform: scale(0.98); }
+
+  /* MAIN APP */
+  #app { display: none; }
+  #app.active { display: block; }
+
+  /* HEADER */
+  .header {
+    background: var(--bg2);
+    border-bottom: 2px solid var(--accent);
+    padding: 1rem 1.5rem;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  .header-brand {
+    font-family: var(--font-display);
+    font-size: clamp(1.5rem, 5vw, 2.2rem);
+    color: var(--accent);
+    letter-spacing: 0.05em;
+    line-height: 1;
+  }
+  .header-brand span {
+    color: var(--text2);
+    font-size: 0.45em;
+    font-family: var(--font-mono);
+    letter-spacing: 0.2em;
+    display: block;
+    margin-top: 2px;
+  }
+  .header-stats {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+  }
+  .stat-pill {
+    text-align: center;
+    line-height: 1.2;
+  }
+  .stat-pill .val {
+    font-family: var(--font-display);
+    font-size: clamp(1.2rem, 3vw, 1.8rem);
+    color: var(--gold);
+    display: block;
+  }
+  .stat-pill .lbl {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    color: var(--text3);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  .btn-reset {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--text2);
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    padding: 0.4rem 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .btn-reset:hover { border-color: var(--red); color: var(--red); }
+
+  /* PROGRESS BAR */
+  .progress-section {
+    padding: 1rem 1.5rem 0;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+  }
+  .progress-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.4rem;
+  }
+  .progress-label {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--text2);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+  .progress-pct {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    color: var(--accent);
+  }
+  .progress-track {
+    width: 100%;
+    height: 6px;
+    background: var(--border);
+    margin-bottom: 1rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+  }
+  .progress-fill::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: -2px;
+    width: 2px;
+    height: 10px;
+    background: #fff;
+    box-shadow: 0 0 6px #fff;
+  }
+
+  /* DAY CURRENT BANNER */
+  .current-day-banner {
+    padding: 1.5rem;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+  }
+  .day-number-display {
+    font-family: var(--font-display);
+    font-size: clamp(3rem, 10vw, 6rem);
+    line-height: 0.85;
+    display: flex;
+    align-items: baseline;
+    gap: 0.25em;
+  }
+  .day-number-display .num { color: var(--accent); }
+  .day-number-display .of75 { color: var(--text3); font-size: 0.4em; }
+  .day-date-sub {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--text2);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-top: 0.25rem;
+  }
+
+  /* TODAY'S TASKS */
+  .today-section {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-title {
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    letter-spacing: 0.1em;
+    color: var(--text);
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .task-list { display: flex; flex-direction: column; gap: 0.6rem; }
+
+  .task-item {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--border2);
+    padding: 0.85rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    transition: border-color 0.2s, background 0.2s;
+    cursor: pointer;
+    user-select: none;
+  }
+  .task-item:hover { border-color: var(--text3); }
+  .task-item.done {
+    border-left-color: var(--green);
+    background: rgba(0, 230, 118, 0.04);
+  }
+  .task-item.done .task-label { color: var(--text2); }
+
+  .task-check {
+    width: 22px;
+    height: 22px;
+    border: 2px solid var(--border2);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    background: transparent;
+  }
+  .task-item.done .task-check {
+    background: var(--green);
+    border-color: var(--green);
+  }
+  .task-check-icon { display: none; }
+  .task-item.done .task-check-icon { display: block; }
+
+  .task-label {
+    font-family: var(--font-body);
+    font-weight: 400;
+    font-size: 0.95rem;
+    letter-spacing: 0.05em;
+    flex: 1;
+    transition: color 0.2s;
+  }
+  .task-icon {
+    font-size: 1.1rem;
+    width: 1.5rem;
+    text-align: center;
+  }
+
+  /* Photo upload */
+  .photo-task {
+    flex-direction: column;
+    align-items: stretch;
+    cursor: default;
+  }
+  .photo-task-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0;
+  }
+  .photo-task.done .photo-task-header .task-label { color: var(--text2); }
+  .photo-preview {
+    display: none;
+    margin-top: 0.75rem;
+  }
+  .photo-preview.visible { display: block; }
+  .photo-preview img {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border: 2px solid var(--green);
+    display: block;
+  }
+  .photo-upload-btn {
+    display: inline-block;
+    margin-top: 0.6rem;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    color: var(--text2);
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    padding: 0.35rem 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+  .photo-upload-btn:hover { border-color: var(--accent); color: var(--accent); }
+  input[type="file"] { display: none; }
+
+  /* COMPLETION ANIMATION */
+  .day-complete-banner {
+    display: none;
+    background: linear-gradient(135deg, rgba(0,230,118,0.15), rgba(0,230,118,0.05));
+    border: 1px solid var(--green);
+    border-left: 4px solid var(--green);
+    padding: 1rem 1.5rem;
+    margin: 0 1.5rem 1.5rem;
+    align-items: center;
+    gap: 1rem;
+    animation: slideIn 0.4s ease;
+  }
+  .day-complete-banner.visible { display: flex; }
+  .complete-icon { font-size: 2rem; animation: pulse 1.5s infinite; }
+  .complete-text .big {
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    color: var(--green);
+    letter-spacing: 0.1em;
+  }
+  .complete-text .small {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--text2);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* WEEKLY DRINK TRACKER */
+  .drinks-section {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .drinks-panel {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-left: 3px solid var(--gold);
+    padding: 1.25rem;
+  }
+  .drinks-prompt {
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    color: var(--text);
+    margin-bottom: 1rem;
+    letter-spacing: 0.03em;
+  }
+  .drinks-input-row {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+  }
+  .drinks-number {
+    width: 80px;
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-left: 3px solid var(--gold);
+    color: var(--gold);
+    font-family: var(--font-display);
+    font-size: 1.8rem;
+    padding: 0.4rem 0.75rem;
+    outline: none;
+    text-align: center;
+    -moz-appearance: textfield;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .drinks-number::-webkit-outer-spin-button,
+  .drinks-number::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .btn-log {
+    background: var(--gold);
+    color: #000;
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    letter-spacing: 0.1em;
+    border: none;
+    padding: 0.6rem 1.5rem;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .btn-log:hover { opacity: 0.85; }
+
+  .drinks-log {
+    margin-top: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .drink-entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg2);
+    border-left: 2px solid var(--border2);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+  }
+  .drink-entry.warning {
+    border-left-color: var(--red);
+    background: rgba(255, 23, 68, 0.07);
+  }
+  .drink-week { color: var(--text2); letter-spacing: 0.1em; }
+  .drink-count { color: var(--text); font-size: 0.9rem; }
+  .drink-count.over { color: var(--red); }
+  .drink-warn { color: var(--red); font-size: 0.85rem; margin-left: 0.25rem; }
+
+  /* GRID */
+  .grid-section {
+    padding: 1.5rem;
+  }
+  .day-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+    gap: 0.4rem;
+  }
+  .day-tile {
+    aspect-ratio: 1;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+    font-size: 0.7rem;
+  }
+  .day-tile:hover { border-color: var(--text3); transform: scale(1.05); z-index: 2; }
+  .day-tile.complete { border-color: var(--green); background: rgba(0,230,118,0.08); }
+  .day-tile.partial { border-color: var(--yellow); background: rgba(255,234,0,0.06); }
+  .day-tile.future { opacity: 0.35; cursor: default; }
+  .day-tile.future:hover { transform: none; border-color: var(--border); }
+  .day-tile.today { border-color: var(--accent); box-shadow: 0 0 10px rgba(255,60,0,0.3); }
+  .tile-num {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    color: var(--text3);
+    position: absolute;
+    top: 3px;
+    left: 5px;
+  }
+  .day-tile.today .tile-num { color: var(--accent); }
+  .tile-emoji { font-size: 1rem; line-height: 1; }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 200;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--bg2);
+    border-top: 2px solid var(--accent);
+    width: 100%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 1.5rem;
+    animation: slideUp 0.3s ease;
+    position: relative;
+  }
+  @keyframes slideUp {
+    from { transform: translateY(30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1.5rem;
+  }
+  .modal-day-title {
+    font-family: var(--font-display);
+    font-size: 2.5rem;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .modal-date-sub {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--text2);
+    letter-spacing: 0.2em;
+    margin-top: 0.25rem;
+  }
+  .modal-close {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--text2);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    padding: 0.35rem 0.75rem;
+    cursor: pointer;
+    letter-spacing: 0.1em;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .modal-close:hover { border-color: var(--red); color: var(--red); }
+
+  /* CONFIRM DIALOG */
+  .confirm-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.9);
+    z-index: 300;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+  }
+  .confirm-overlay.open { display: flex; }
+  .confirm-box {
+    background: var(--bg2);
+    border: 2px solid var(--red);
+    max-width: 380px;
+    width: 100%;
+    padding: 2rem;
+  }
+  .confirm-title {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    color: var(--red);
+    letter-spacing: 0.1em;
+    margin-bottom: 0.75rem;
+  }
+  .confirm-body {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text2);
+    letter-spacing: 0.1em;
+    line-height: 1.7;
+    margin-bottom: 1.5rem;
+  }
+  .confirm-btns { display: flex; gap: 0.75rem; }
+  .btn-danger {
+    background: var(--red);
+    color: #fff;
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    letter-spacing: 0.1em;
+    border: none;
+    padding: 0.6rem 1.5rem;
+    cursor: pointer;
+    flex: 1;
+    transition: opacity 0.2s;
+  }
+  .btn-danger:hover { opacity: 0.85; }
+  .btn-cancel {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--text2);
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    letter-spacing: 0.1em;
+    padding: 0.6rem 1.5rem;
+    cursor: pointer;
+    flex: 1;
+    transition: all 0.2s;
+  }
+  .btn-cancel:hover { border-color: var(--text2); color: var(--text); }
+
+  /* CONFETTI (CSS only) */
+  .confetti-container {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 90;
+    overflow: hidden;
+    display: none;
+  }
+  .confetti-container.active { display: block; }
+  .confetti-piece {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    top: -10px;
+    animation: confettiFall linear forwards;
+    border-radius: 1px;
+  }
+  @keyframes confettiFall {
+    0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); }
+
+  @media (max-width: 480px) {
+    .header-stats { gap: 0.75rem; }
+    .stat-pill .val { font-size: 1.3rem; }
+    .day-grid { grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); }
+  }
+</style>
+</head>
+<body>
+
+<!-- SETUP SCREEN -->
+<div id="setup-screen" class="active">
+  <div class="setup-box">
+    <div class="setup-title">75<br>HARD</div>
+    <div class="setup-sub">// Challenge Tracker — Initialize Protocol</div>
+    <label class="setup-label" for="start-date-input">Select Your Start Date</label>
+    <input type="date" id="start-date-input" class="setup-input">
+    <button class="btn-primary" onclick="initChallenge()">ENGAGE CHALLENGE</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-brand">
+      75 HARD
+      <span>// MENTAL TOUGHNESS PROTOCOL</span>
+    </div>
+    <div class="header-stats">
+      <div class="stat-pill">
+        <span class="val" id="streak-val">0</span>
+        <span class="lbl">Streak</span>
+      </div>
+      <div class="stat-pill">
+        <span class="val" id="days-done-val">0</span>
+        <span class="lbl">Days Done</span>
+      </div>
+      <button class="btn-reset" onclick="confirmReset()">⚠ RESET</button>
+    </div>
+  </div>
+
+  <!-- PROGRESS BAR -->
+  <div class="progress-section">
+    <div class="progress-meta">
+      <span class="progress-label">Overall Progress</span>
+      <span class="progress-pct" id="progress-pct">0%</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <!-- CURRENT DAY BANNER -->
+  <div class="current-day-banner">
+    <div class="day-number-display">
+      <span class="num" id="current-day-num">1</span>
+      <span class="of75">/ 75</span>
+    </div>
+    <div class="day-date-sub" id="current-day-date">TODAY — LOADING...</div>
+  </div>
+
+  <!-- COMPLETION BANNER -->
+  <div class="day-complete-banner" id="complete-banner">
+    <div class="complete-icon">🔥</div>
+    <div class="complete-text">
+      <div class="big">DAY COMPLETE</div>
+      <div class="small">// All objectives achieved — maintain discipline</div>
+    </div>
+  </div>
+
+  <!-- TODAY'S TASKS -->
+  <div class="today-section" id="today-section">
+    <div class="section-title">TODAY'S OBJECTIVES</div>
+    <div class="task-list" id="task-list">
+      <!-- dynamically rendered -->
+    </div>
+  </div>
+
+  <!-- WEEKLY DRINK TRACKER (shown always, but logs by week) -->
+  <div class="drinks-section" id="drinks-section">
+    <div class="section-title">WEEKLY INTAKE LOG</div>
+    <div class="drinks-panel">
+      <div class="drinks-prompt" id="drinks-prompt">Log drinks for this week (Week <span id="current-week-num">1</span>)</div>
+      <div class="drinks-input-row">
+        <input type="number" class="drinks-number" id="drinks-input" min="0" max="50" value="0" placeholder="0">
+        <button class="btn-log" onclick="logDrinks()">LOG WEEK</button>
+      </div>
+      <div class="drinks-log" id="drinks-log"></div>
+    </div>
+  </div>
+
+  <!-- 75-DAY GRID -->
+  <div class="grid-section">
+    <div class="section-title">MISSION OVERVIEW</div>
+    <div class="day-grid" id="day-grid"></div>
+  </div>
+
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal-content">
+    <div class="modal-header">
+      <div>
+        <div class="modal-day-title" id="modal-title">DAY 1</div>
+        <div class="modal-date-sub" id="modal-date"></div>
+      </div>
+      <button class="modal-close" onclick="closeModalDirect()">[ CLOSE ]</button>
+    </div>
+    <div class="task-list" id="modal-task-list"></div>
+  </div>
+</div>
+
+<!-- CONFIRM RESET DIALOG -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <div class="confirm-title">ABORT MISSION?</div>
+    <div class="confirm-body">This will erase ALL progress, photos, and data.<br>The challenge will restart from scratch.<br><br>THIS CANNOT BE UNDONE.</div>
+    <div class="confirm-btns">
+      <button class="btn-danger" onclick="executeReset()">CONFIRM RESET</button>
+      <button class="btn-cancel" onclick="cancelReset()">STAND DOWN</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFETTI -->
+<div class="confetti-container" id="confetti-container"></div>
+
+<script>
+// ==============================
+// STATE
+// ==============================
+const TOTAL_DAYS = 75;
+let startDate = null;
+
+function getState() {
+  return JSON.parse(localStorage.getItem('75hard_state') || 'null');
+}
+function saveState(s) {
+  localStorage.setItem('75hard_state', JSON.stringify(s));
+}
+function defaultState(start) {
+  return { startDate: start, days: {}, drinks: {}, photos: {} };
+}
+
+function getDayData(state, d) {
+  if (!state.days[d]) state.days[d] = { calorie: false, w1: false, w2: false, read: false, water: false, photo: false };
+  return state.days[d];
+}
+
+function isDayComplete(state, d) {
+  const dd = getDayData(state, d);
+  return dd.calorie && dd.w1 && dd.w2 && dd.read && dd.water && dd.photo;
+}
+
+function calcCurrentDay() {
+  if (!startDate) return 1;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const start = new Date(startDate); start.setHours(0,0,0,0);
+  const diff = Math.floor((today - start) / 86400000) + 1;
+  return Math.max(1, Math.min(diff, TOTAL_DAYS));
+}
+
+function calcCurrentWeek() {
+  const d = calcCurrentDay();
+  return Math.ceil(d / 7);
+}
+
+function getDateForDay(d) {
+  const start = new Date(startDate); start.setHours(0,0,0,0);
+  const date = new Date(start);
+  date.setDate(date.getDate() + d - 1);
+  return date;
+}
+
+function formatDate(date) {
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function calcStreak(state) {
+  let streak = 0;
+  const today = calcCurrentDay();
+  for (let d = today; d >= 1; d--) {
+    if (isDayComplete(state, d)) streak++;
+    else break;
+  }
+  return streak;
+}
+
+function countCompleteDays(state) {
+  let n = 0;
+  const today = calcCurrentDay();
+  for (let d = 1; d <= today; d++) {
+    if (isDayComplete(state, d)) n++;
+  }
+  return n;
+}
+
+// ==============================
+// INIT
+// ==============================
+function boot() {
+  const state = getState();
+  if (!state) {
+    // First visit
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth()+1).padStart(2,'0');
+    const dd = String(today.getDate()).padStart(2,'0');
+    document.getElementById('start-date-input').value = `${yyyy}-${mm}-${dd}`;
+    document.getElementById('setup-screen').classList.add('active');
+    document.getElementById('app').classList.remove('active');
+  } else {
+    startDate = state.startDate;
+    showApp(state);
+  }
+}
+
+function initChallenge() {
+  const val = document.getElementById('start-date-input').value;
+  if (!val) { alert('Please select a start date.'); return; }
+  startDate = val;
+  const state = defaultState(val);
+  saveState(state);
+  document.getElementById('setup-screen').classList.remove('active');
+  showApp(state);
+}
+
+function showApp(state) {
+  document.getElementById('setup-screen').classList.remove('active');
+  document.getElementById('app').classList.add('active');
+  renderAll(state);
+}
+
+// ==============================
+// RENDER
+// ==============================
+function renderAll(state) {
+  const day = calcCurrentDay();
+  const streak = calcStreak(state);
+  const done = countCompleteDays(state);
+  const pct = Math.round((done / TOTAL_DAYS) * 100);
+
+  // Header stats
+  document.getElementById('streak-val').textContent = streak;
+  document.getElementById('days-done-val').textContent = done;
+  document.getElementById('progress-pct').textContent = pct + '%';
+  document.getElementById('progress-fill').style.width = pct + '%';
+
+  // Current day
+  document.getElementById('current-day-num').textContent = day;
+  document.getElementById('current-day-date').textContent = 'TODAY — ' + formatDate(getDateForDay(day)).toUpperCase();
+
+  // Task list for today
+  renderTaskList(state, day, 'task-list', true);
+
+  // Complete banner
+  const banner = document.getElementById('complete-banner');
+  if (isDayComplete(state, day)) {
+    banner.classList.add('visible');
+  } else {
+    banner.classList.remove('visible');
+  }
+
+  // Week display
+  const week = calcCurrentWeek();
+  document.getElementById('current-week-num').textContent = week;
+
+  // Pre-fill existing drink count for this week
+  const existing = state.drinks[week];
+  if (existing !== undefined) {
+    document.getElementById('drinks-input').value = existing;
+  }
+
+  renderDrinksLog(state);
+  renderGrid(state);
+}
+
+// TASKS
+const TASKS = [
+  { key: 'calorie', label: 'Calorie Deficit', icon: '🔥', single: true },
+  { key: 'w1',      label: 'Workout 1',       icon: '💪', single: true },
+  { key: 'w2',      label: 'Workout 2',       icon: '🏋️', single: true },
+  { key: 'read',    label: 'Read 10 Pages',   icon: '📖', single: true },
+  { key: 'water',   label: '1 Gallon Water',  icon: '💧', single: true },
+  { key: 'photo',   label: 'Progress Photo',  icon: '📸', single: false },
+];
+
+function renderTaskList(state, day, containerId, isToday) {
+  const container = document.getElementById(containerId);
+  const dd = getDayData(state, day);
+  const isPast = day < calcCurrentDay();
+  const isFuture = day > calcCurrentDay();
+
+  container.innerHTML = '';
+
+  TASKS.forEach(t => {
+    const done = dd[t.key];
+    if (t.single) {
+      const el = document.createElement('div');
+      el.className = 'task-item' + (done ? ' done' : '');
+      el.innerHTML = `
+        <div class="task-check">
+          <svg class="task-check-icon" width="12" height="10" viewBox="0 0 12 10" fill="none">
+            <path d="M1 5L4.5 8.5L11 1.5" stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <span class="task-icon">${t.icon}</span>
+        <span class="task-label">${t.label}</span>
+      `;
+      if (!isFuture) {
+        el.addEventListener('click', () => {
+          const s = getState();
+          const d = getDayData(s, day);
+          d[t.key] = !d[t.key];
+          saveState(s);
+          if (isToday) {
+            checkCompletionAnimation(s, day);
+            renderAll(s);
+          } else {
+            renderTaskList(s, day, containerId, isToday);
+            renderGrid(s);
+          }
+        });
+      } else {
+        el.style.opacity = '0.4';
+        el.style.cursor = 'default';
+      }
+      container.appendChild(el);
+    } else {
+      // Photo
+      const photoKey = 'photo_day_' + day;
+      const photoData = localStorage.getItem(photoKey);
+      const el = document.createElement('div');
+      el.className = 'task-item photo-task' + (done ? ' done' : '');
+
+      let thumbHtml = `<div class="photo-preview${photoData ? ' visible' : ''}">
+        ${photoData ? `<img src="${photoData}" alt="Progress photo">` : ''}
+      </div>`;
+
+      el.innerHTML = `
+        <div class="photo-task-header">
+          <div class="task-check">
+            <svg class="task-check-icon" width="12" height="10" viewBox="0 0 12 10" fill="none">
+              <path d="M1 5L4.5 8.5L11 1.5" stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span class="task-icon">${t.icon}</span>
+          <span class="task-label">${t.label}</span>
+        </div>
+        ${thumbHtml}
+        ${!isFuture ? `<label class="photo-upload-btn" for="file-input-${day}-${containerId}">${done ? '[ REPLACE PHOTO ]' : '[ UPLOAD PHOTO ]'}</label>
+        <input type="file" id="file-input-${day}-${containerId}" accept="image/*" data-day="${day}" data-container="${containerId}" data-istoday="${isToday}">` : ''}
+      `;
+      container.appendChild(el);
+
+      if (!isFuture) {
+        const fileInput = el.querySelector('input[type="file"]');
+        fileInput.addEventListener('change', handlePhotoUpload);
+      }
+    }
+  });
+}
+
+function handlePhotoUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const day = parseInt(e.target.dataset.day);
+  const containerId = e.target.dataset.container;
+  const isToday = e.target.dataset.istoday === 'true';
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    const b64 = ev.target.result;
+    localStorage.setItem('photo_day_' + day, b64);
+    const s = getState();
+    getDayData(s, day).photo = true;
+    saveState(s);
+    if (isToday) {
+      checkCompletionAnimation(s, day);
+      renderAll(s);
+    } else {
+      renderTaskList(s, day, containerId, false);
+      renderGrid(s);
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+// DRINKS LOG
+function renderDrinksLog(state) {
+  const container = document.getElementById('drinks-log');
+  container.innerHTML = '';
+  const weeks = Object.keys(state.drinks).sort((a,b) => +a - +b);
+  if (!weeks.length) return;
+  weeks.forEach(w => {
+    const count = state.drinks[w];
+    const over = count > 15;
+    const el = document.createElement('div');
+    el.className = 'drink-entry' + (over ? ' warning' : '');
+    el.innerHTML = `
+      <span class="drink-week">WK ${String(w).padStart(2,'0')}</span>
+      <span class="drink-count${over ? ' over' : ''}">${count} drinks${over ? ' <span class="drink-warn">⚠ OVER LIMIT</span>' : ''}</span>
+    `;
+    container.appendChild(el);
+  });
+}
+
+function logDrinks() {
+  const val = parseInt(document.getElementById('drinks-input').value) || 0;
+  const week = calcCurrentWeek();
+  const s = getState();
+  s.drinks[week] = Math.max(0, Math.min(50, val));
+  saveState(s);
+  renderDrinksLog(s);
+}
+
+// GRID
+function renderGrid(state) {
+  const grid = document.getElementById('day-grid');
+  grid.innerHTML = '';
+  const today = calcCurrentDay();
+
+  for (let d = 1; d <= TOTAL_DAYS; d++) {
+    const tile = document.createElement('div');
+    const complete = isDayComplete(state, d);
+    const dd = getDayData(state, d);
+    const anyDone = dd.calorie || dd.w1 || dd.w2 || dd.read || dd.water || dd.photo;
+    const future = d > today;
+    const isToday = d === today;
+
+    tile.className = 'day-tile';
+    if (complete) tile.classList.add('complete');
+    else if (!future && anyDone) tile.classList.add('partial');
+    if (future) tile.classList.add('future');
+    if (isToday) tile.classList.add('today');
+
+    const emoji = complete ? '✅' : (!future && anyDone ? '🟡' : (future ? '⬜' : '⬜'));
+    tile.innerHTML = `<span class="tile-num">${d}</span><span class="tile-emoji">${emoji}</span>`;
+
+    if (!future) {
+      tile.addEventListener('click', () => openModal(d));
+    }
+    grid.appendChild(tile);
+  }
+}
+
+// MODAL
+function openModal(day) {
+  const state = getState();
+  const date = getDateForDay(day);
+  document.getElementById('modal-title').textContent = 'DAY ' + day;
+  document.getElementById('modal-date').textContent = formatDate(date).toUpperCase();
+  renderTaskList(state, day, 'modal-task-list', day === calcCurrentDay());
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeModalDirect();
+}
+
+function closeModalDirect() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  // Refresh in case changes were made
+  const s = getState();
+  renderAll(s);
+}
+
+// COMPLETION ANIMATION
+let lastAnimatedDay = null;
+function checkCompletionAnimation(state, day) {
+  if (isDayComplete(state, day) && lastAnimatedDay !== day) {
+    lastAnimatedDay = day;
+    fireConfetti();
+  }
+}
+
+function fireConfetti() {
+  const container = document.getElementById('confetti-container');
+  container.innerHTML = '';
+  container.classList.add('active');
+  const colors = ['#ff3c00','#f5c400','#00e676','#00b0ff','#ff1744','#ffffff'];
+  for (let i = 0; i < 80; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.left = Math.random() * 100 + 'vw';
+    piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+    piece.style.animationDuration = (1.5 + Math.random() * 2) + 's';
+    piece.style.animationDelay = (Math.random() * 0.5) + 's';
+    piece.style.transform = `rotate(${Math.random()*360}deg)`;
+    piece.style.width = (6 + Math.random() * 8) + 'px';
+    piece.style.height = (6 + Math.random() * 8) + 'px';
+    container.appendChild(piece);
+  }
+  setTimeout(() => {
+    container.classList.remove('active');
+    container.innerHTML = '';
+  }, 3500);
+}
+
+// RESET
+function confirmReset() {
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+function cancelReset() {
+  document.getElementById('confirm-overlay').classList.remove('open');
+}
+function executeReset() {
+  // Clear all 75 HARD data
+  localStorage.removeItem('75hard_state');
+  for (let d = 1; d <= TOTAL_DAYS; d++) localStorage.removeItem('photo_day_' + d);
+  document.getElementById('confirm-overlay').classList.remove('open');
+  document.getElementById('app').classList.remove('active');
+  document.getElementById('setup-screen').classList.add('active');
+  startDate = null;
+  lastAnimatedDay = null;
+}
+
+// ==============================
+// START
+// ==============================
+boot();
+</script>
+</body>
+</html>
