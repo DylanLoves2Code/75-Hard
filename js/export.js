@@ -110,7 +110,9 @@ function summarizeState(s){
       const dd=s.days[k];
       // Mirror isDayComplete's six-boolean check without depending on
       // state defaults (imported state may be partial).
-      if(dd&&dd.calorie&&dd.w1&&dd.w2&&dd.read&&dd.water&&dd.photo)days++;
+      // v3+ uses `dietAdherence`; accept the legacy `calorie` for older backups.
+      const diet=dd&&(dd.dietAdherence||dd.calorie);
+      if(dd&&diet&&dd.w1&&dd.w2&&dd.read&&dd.water&&dd.photo)days++;
       if(dd&&dd.photo)photoRefs++;
     }
   }

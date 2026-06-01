@@ -7,6 +7,19 @@ import { renderGallery, openLightbox } from './photos.js';
 import { emit } from './bus.js';
 
 /**
+ * Resolve the user-facing diet name from state.diet. 'Custom' falls back
+ * to the user's free-text label, or '' if neither is set.
+ * @param {import('./state.js').State} s
+ * @returns {string}
+ */
+function resolveDietName(s){
+  const d=s&&s.diet;
+  if(!d||!d.name)return '';
+  if(d.name==='Custom')return (d.customText||'').trim();
+  return d.name;
+}
+
+/**
  * Render the six-task list into `containerId` for a given day.
  * @param {import('./state.js').State} s
  * @param {number} day
@@ -21,30 +34,40 @@ export function renderTaskList(s,day,containerId,isToday){
   container.innerHTML='';
 
   TASKS.forEach(t=>{
-    const done=dd[t.key];
+    // dietAdherence (v3+) accepts the legacy `calorie` value for back-compat.
+    const done=t.key==='dietAdherence'?(dd.dietAdherence||dd.calorie):dd[t.key];
     if(t.single){
       let labelText=t.label;
       if(t.customLabel){
         labelText=dd[t.key+'label']||t.label;
       }
+      // Diet slot: append the user's chosen diet name in parens.
+      if(t.key==='dietAdherence'){
+        const dietName=resolveDietName(s);
+        if(dietName)labelText=`${labelText} (${dietName})`;
+      }
       const showEdit=t.customLabel&&isToday&&!isFuture;
-      // Rows that host an interactive EDIT child must remain a div
+      const showOutdoor=t.customLabel&&!isFuture; // w1/w2 outdoor toggle
+      // Rows that host an interactive EDIT/OUTDOOR child must remain a div
       // (nested <button> inside <button> is invalid HTML). Otherwise
       // promote to a real <button> for native a11y semantics.
-      const useButton=!showEdit;
+      const useButton=!(showEdit||showOutdoor);
       const el=document.createElement(useButton?'button':'div');
       if(useButton)el.type='button';
       el.className='task-item'+(done?' done':'');
+      const outdoorKey=t.key+'outdoor';
+      const outdoorOn=showOutdoor?!!dd[outdoorKey]:false;
       el.innerHTML=`
         <div class="task-check"><svg class="task-check-icon" width="12" height="10" viewBox="0 0 12 10"><path d="M1 5L4.5 8.5L11 1.5" stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round" fill="none"/></svg></div>
         <span class="task-icon">${t.icon}</span>
         <span class="task-label">${labelText}</span>
+        ${showOutdoor?`<button type="button" class="btn-outdoor-toggle${outdoorOn?' on':''}" aria-label="Toggle outdoor for ${labelText}" aria-pressed="${outdoorOn?'true':'false'}">[ OUTDOOR ]</button>`:''}
         ${showEdit?`<button type="button" class="btn-edit-label" aria-label="Rename ${t.label}">[ EDIT ]</button>`:''}
       `;
       el.setAttribute('aria-pressed',done?'true':'false');
       el.setAttribute('aria-label',labelText);
       if(!useButton){
-        // Fallback ARIA shim path (rows with a nested EDIT button).
+        // Fallback ARIA shim path (rows with a nested EDIT/OUTDOOR button).
         el.setAttribute('role','button');
       }
       if(!isFuture){
@@ -53,13 +76,20 @@ export function renderTaskList(s,day,containerId,isToday){
           if(el.classList.contains('editing'))return;
           const s2=getState();
           const d2=getDayData(s2,day);
-          updateDayData(s2,day,{[t.key]:!d2[t.key]});
+          // Diet slot writes the v3 key; legacy `calorie` is preserved.
+          if(t.key==='dietAdherence'){
+            const next=!(d2.dietAdherence||d2.calorie);
+            updateDayData(s2,day,{dietAdherence:next});
+          } else {
+            updateDayData(s2,day,{[t.key]:!d2[t.key]});
+          }
           saveState(s2);
           if(isToday){checkCompletionAnimation(s2,day);emit('state:changed',s2);}
           else{renderTaskList(s2,day,containerId,false);renderGrid(s2);}
         };
         el.addEventListener('click',e=>{
           if(e.target.closest('.btn-edit-label'))return;
+          if(e.target.closest('.btn-outdoor-toggle'))return;
           if(e.target.closest('.task-label-input'))return;
           activate();
         });
@@ -81,11 +111,46 @@ export function renderTaskList(s,day,containerId,isToday){
             startEditLabel(el,t,day,containerId,isToday);
           });
         }
+        if(showOutdoor){
+          const outBtn=el.querySelector('.btn-outdoor-toggle');
+          outBtn.addEventListener('click',e=>{
+            e.stopPropagation();
+            const s2=getState();
+            const d2=getDayData(s2,day);
+            updateDayData(s2,day,{[outdoorKey]:!d2[outdoorKey]});
+            saveState(s2);
+            if(isToday){emit('state:changed',s2);}
+            else{renderTaskList(s2,day,containerId,false);renderGrid(s2);}
+          });
+        }
       } else {
         if(useButton)el.disabled=true;
         el.style.opacity='0.4';el.style.cursor='default';
       }
       container.appendChild(el);
+
+      // Inline diet-note input lives just under the dietAdherence row on Today.
+      if(t.key==='dietAdherence'&&isToday&&!isFuture){
+        const noteWrap=document.createElement('div');
+        noteWrap.className='diet-note-wrap';
+        const noteInput=document.createElement('input');
+        noteInput.type='text';
+        noteInput.className='diet-note-input';
+        noteInput.placeholder='Note what you ate (optional)';
+        noteInput.setAttribute('aria-label','Diet note for today');
+        noteInput.value=dd.dietNote||'';
+        noteInput.addEventListener('click',e=>e.stopPropagation());
+        noteInput.addEventListener('blur',()=>{
+          const s2=getState();
+          const d2=getDayData(s2,day);
+          const val=noteInput.value;
+          if((d2.dietNote||'')===val)return;
+          updateDayData(s2,day,{dietNote:val});
+          saveState(s2);
+        });
+        noteWrap.appendChild(noteInput);
+        container.appendChild(noteWrap);
+      }
     } else {
       const pKey=photoKey(day);
       const photoData=localStorage.getItem(pKey);

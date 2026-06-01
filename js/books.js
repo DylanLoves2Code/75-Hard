@@ -59,7 +59,18 @@ function renderBookRowDisplay(row,day,entry){
   main.className='book-log-main';
   const titleEl=document.createElement('div');
   titleEl.className='book-log-title';
-  titleEl.textContent=entry.title||'(No title)';
+  // Books default to nonfiction (rules-compliant); a `false` here means
+  // the user explicitly opted into fiction. Surface a small grey badge
+  // so they can spot non-rules entries in the log without alarm.
+  if(entry.nonfiction===false){
+    const badge=document.createElement('span');
+    badge.className='book-log-badge fiction';
+    badge.textContent='FICTION';
+    titleEl.appendChild(document.createTextNode((entry.title||'(No title)')+' '));
+    titleEl.appendChild(badge);
+  } else {
+    titleEl.textContent=entry.title||'(No title)';
+  }
   const dayEl=document.createElement('div');
   dayEl.className='book-log-day';
   dayEl.textContent='DAY '+day;
@@ -117,8 +128,21 @@ function startEditRow(row,day,entry){
   pagesInput.value=String(entry.pages||0);
   pagesInput.setAttribute('aria-label','Pages for day '+day);
 
+  // Nonfiction toggle (v3+): preserves the existing flag for old entries.
+  const nfWrap=document.createElement('label');
+  nfWrap.className='book-log-edit-nf';
+  const nfInput=document.createElement('input');
+  nfInput.type='checkbox';
+  nfInput.checked=entry.nonfiction!==false;
+  nfInput.setAttribute('aria-label','Nonfiction for day '+day);
+  const nfText=document.createElement('span');
+  nfText.textContent='NF';
+  nfWrap.appendChild(nfInput);
+  nfWrap.appendChild(nfText);
+
   row.appendChild(titleInput);
   row.appendChild(pagesInput);
+  row.appendChild(nfWrap);
 
   let finished=false;
   const cancel=()=>{
@@ -134,7 +158,7 @@ function startEditRow(row,day,entry){
     const newPages=parseInt(pagesInput.value)||0;
     const s=getState();
     if(!s.books)s.books={};
-    s.books[day]={title:newTitle,pages:newPages};
+    s.books[day]={title:newTitle,pages:newPages,nonfiction:nfInput.checked};
     saveState(s);
     emit('state:changed',s);
     showToast('Book entry updated');
@@ -158,6 +182,8 @@ function startEditRow(row,day,entry){
   };
   titleInput.addEventListener('blur',blurHandler);
   pagesInput.addEventListener('blur',blurHandler);
+  nfInput.addEventListener('blur',blurHandler);
+  nfInput.addEventListener('click',e=>e.stopPropagation());
 
   titleInput.focus();
   titleInput.select();
@@ -211,6 +237,9 @@ function startDeleteConfirm(row,day,delBtn){
 
 /**
  * Persist the title/pages inputs into today's book entry, then re-render.
+ *
+ * v3 added a `nonfiction` checkbox (default true) so users can flag the
+ * rare fiction entry; we preserve the existing value if present.
  * @returns {void}
  */
 export function saveBookEntry(){
@@ -218,6 +247,9 @@ export function saveBookEntry(){
   if(!s.books)s.books={};
   const title=document.getElementById('book-title-input').value.trim();
   const pages=parseInt(document.getElementById('book-pages-input').value)||0;
-  s.books[day]={title,pages};
+  const nfEl=document.getElementById('book-nonfiction-input');
+  // Defaults to true: 75 Hard requires nonfiction self-improvement reading.
+  const nonfiction=nfEl?nfEl.checked:true;
+  s.books[day]={title,pages,nonfiction};
   saveState(s);renderBooks(s);showToast('Book entry saved');
 }

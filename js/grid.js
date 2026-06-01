@@ -15,7 +15,8 @@ export function renderGrid(s){
   for(let d=1;d<=TOTAL;d++){
     const complete=isDayComplete(s,d);
     const dd=getDayData(s,d);
-    const any=dd.calorie||dd.w1||dd.w2||dd.read||dd.water||dd.photo;
+    // dietAdherence (v3) or legacy calorie satisfy the "any progress" tile.
+    const any=dd.dietAdherence||dd.calorie||dd.w1||dd.w2||dd.read||dd.water||dd.photo;
     const future=d>today;const isToday=d===today;
     // Future tiles are non-interactive — keep them as <div>.
     // Past/current tiles open a modal — promote to a real <button>.

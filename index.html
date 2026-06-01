@@ -21,6 +21,17 @@
     <input type="date" id="start-date-input" class="setup-input">
     <label class="setup-label" for="setup-name-input">Your Name (optional)</label>
     <input type="text" id="setup-name-input" class="setup-input" placeholder="SOLDIER">
+    <label class="setup-label" for="setup-diet-select">Choose Your Diet</label>
+    <select id="setup-diet-select" class="setup-input">
+      <option value="Paleo">Paleo</option>
+      <option value="Keto">Keto</option>
+      <option value="IIFYM">IIFYM</option>
+      <option value="Whole30">Whole30</option>
+      <option value="Carnivore">Carnivore</option>
+      <option value="Vegan">Vegan</option>
+      <option value="Custom">Custom...</option>
+    </select>
+    <input type="text" id="setup-diet-custom" class="setup-input" placeholder="Custom diet name" style="display:none;">
     <button class="btn-primary">ENGAGE CHALLENGE</button>
   </div>
 </div>
@@ -106,6 +117,7 @@
       <div class="complete-text">
         <div class="big">DAY COMPLETE</div>
         <div class="small">// All objectives achieved — maintain discipline</div>
+        <div class="caveat" id="complete-caveat"></div>
       </div>
     </div>
 
@@ -208,6 +220,10 @@
             <div style="font-family:var(--font-m);font-size:0.6rem;color:var(--text2);letter-spacing:0.1em;margin-bottom:0.25rem;">Pages today</div>
             <input type="number" class="book-pages-input" id="book-pages-input" min="0" max="9999" placeholder="10">
           </div>
+          <label class="book-nonfiction-label" for="book-nonfiction-input">
+            <input type="checkbox" id="book-nonfiction-input" checked>
+            <span>NONFICTION</span>
+          </label>
           <button class="btn-sm" style="margin-left:0.75rem;">LOG</button>
         </div>
       </div>

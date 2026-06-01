@@ -152,6 +152,17 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .task-sub{font-family:var(--font-m);font-size:0.6rem;color:var(--text3);letter-spacing:0.1em;margin-left:auto;}
 .btn-edit-label{margin-left:auto;background:transparent;border:1px solid var(--border2);color:var(--text3);font-family:var(--font-m);font-size:0.55rem;letter-spacing:0.15em;padding:0.25rem 0.55rem;cursor:pointer;text-transform:uppercase;transition:all 0.2s;flex-shrink:0;}
 .btn-edit-label:hover{border-color:var(--accent);color:var(--accent);}
+/* OUTDOOR toggle pill — sits to the left of EDIT on w1/w2 rows.
+   Matches the EDIT button visually but smaller, with an accented "on" state. */
+.btn-outdoor-toggle{margin-left:auto;background:transparent;border:1px solid var(--border2);color:var(--text3);font-family:var(--font-m);font-size:0.5rem;letter-spacing:0.15em;padding:0.2rem 0.45rem;cursor:pointer;text-transform:uppercase;transition:all 0.2s;flex-shrink:0;}
+.btn-outdoor-toggle + .btn-edit-label{margin-left:0.35rem;}
+.btn-outdoor-toggle:hover{border-color:var(--accent);color:var(--accent);}
+.btn-outdoor-toggle.on{border-color:var(--accent);color:var(--accent);}
+/* Inline "what I ate" note — sits directly below the Follow Diet row. */
+.diet-note-wrap{margin:-0.25rem 0 0.1rem;}
+.diet-note-input{width:100%;background:var(--bg3);border:1px solid var(--border);border-left:3px solid var(--accent);color:var(--text);font-family:var(--font-m);font-size:0.65rem;letter-spacing:0.05em;padding:0.3rem 0.55rem;outline:none;-webkit-appearance:none;appearance:none;}
+.diet-note-input:focus{border-color:var(--accent2);border-left-color:var(--accent2);}
+.diet-note-input::placeholder{color:var(--text3);}
 .task-item.editing{cursor:default;}
 .task-item.editing:hover{border-color:var(--border2);}
 .task-label-input{flex:1;background:var(--bg3);border:1px solid var(--border2);border-left:3px solid var(--accent);color:var(--text);font-family:var(--font-m);font-size:0.85rem;letter-spacing:0.04em;padding:0.3rem 0.5rem;outline:none;min-width:0;-webkit-appearance:none;appearance:none;}
@@ -210,6 +221,7 @@ input[type="file"]{display:none;}
 .complete-icon{font-size:1.8rem;animation:pulse 1.5s infinite;}
 .complete-text .big{font-family:var(--font-d);font-size:1.3rem;color:var(--green);letter-spacing:0.1em;}
 .complete-text .small{font-family:var(--font-m);font-size:0.6rem;color:var(--text2);letter-spacing:0.15em;text-transform:uppercase;margin-top:2px;}
+.complete-text .caveat{display:none;font-family:var(--font-m);font-size:0.6rem;color:var(--yellow);letter-spacing:0.1em;margin-top:4px;line-height:1.4;}
 
 /* DRINKS */
 .drinks-panel{background:var(--bg3);border:1px solid var(--border2);border-left:3px solid var(--gold);padding:1.1rem;}
@@ -296,6 +308,15 @@ input[type="file"]{display:none;}
 .book-log-edit-title{flex:1;min-width:0;background:var(--bg);border:1px solid var(--border2);border-left:3px solid var(--purple);color:var(--text);font-family:var(--font-b);font-size:0.8rem;padding:0.3rem 0.5rem;outline:none;-webkit-appearance:none;appearance:none;}
 .book-log-edit-pages{width:60px;background:var(--bg);border:1px solid var(--border2);border-left:3px solid var(--purple);color:var(--purple);font-family:var(--font-d);font-size:1rem;padding:0.3rem 0.4rem;outline:none;text-align:center;-moz-appearance:textfield;-webkit-appearance:none;}
 .book-log-edit-pages::-webkit-outer-spin-button,.book-log-edit-pages::-webkit-inner-spin-button{-webkit-appearance:none;}
+/* Inline NF checkbox surfaced on the book-log edit row. */
+.book-log-edit-nf{display:inline-flex;align-items:center;gap:0.3rem;font-family:var(--font-m);font-size:0.55rem;color:var(--text2);letter-spacing:0.15em;cursor:pointer;text-transform:uppercase;flex-shrink:0;}
+.book-log-edit-nf input{accent-color:var(--purple);cursor:pointer;}
+/* FICTION badge — a small grey pill on book-log entries that opt out
+   of nonfiction. Intentionally muted (not alarming). */
+.book-log-badge{display:inline-block;background:var(--bg);border:1px solid var(--border2);color:var(--text3);font-family:var(--font-m);font-size:0.5rem;letter-spacing:0.15em;padding:1px 5px;margin-left:0.4rem;vertical-align:middle;text-transform:uppercase;}
+/* NONFICTION inline checkbox on the book input card. */
+.book-nonfiction-label{display:inline-flex;align-items:center;gap:0.35rem;margin-left:0.75rem;font-family:var(--font-m);font-size:0.55rem;color:var(--text2);letter-spacing:0.15em;cursor:pointer;text-transform:uppercase;}
+.book-nonfiction-label input{accent-color:var(--purple);cursor:pointer;}
 
 /* EXPORT */
 .export-section{padding:1.25rem;}
