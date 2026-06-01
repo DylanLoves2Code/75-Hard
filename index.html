@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>75 HARD — CHALLENGE TRACKER</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Share+Tech+Mono&family=Oswald:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0a0a0a;--bg2:#111;--bg3:#1a1a1a;--bg4:#222;
+  --border:#2a2a2a;--border2:#333;
+  --text:#e8e8e8;--text2:#888;--text3:#555;
+  --accent:#ff3c00;--accent2:#ff6a00;
+  --gold:#f5c400;--green:#00e676;--yellow:#ffea00;
+  --red:#ff1744;--blue:#00b0ff;--purple:#d500f9;
+  --font-d:'Bebas Neue',sans-serif;
+  --font-m:'Share Tech Mono',monospace;
+  --font-b:'Oswald',sans-serif;
+}
+.light-mode {
+  --bg:#f0ece4;--bg2:#e8e3d9;--bg3:#ddd8cc;--bg4:#d4cfc2;
+  --border:#c8c2b4;--border2:#b8b2a4;
+  --text:#1a1a1a;--text2:#555;--text3:#888;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:var(--font-b);min-height:100vh;overflow-x:hidden;transition:background 0.3s,color 0.3s;}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:999;opacity:0.3;}
+
+/* TABS */
+.app-tabs{display:flex;background:var(--bg2);border-bottom:2px solid var(--accent);overflow-x:auto;scrollbar-width:none;}
+.app-tabs::-webkit-scrollbar{display:none;}
+.tab-btn{font-family:var(--font-m);font-size:0.6rem;letter-spacing:0.15em;color:var(--text3);background:transparent;border:none;border-bottom:2px solid transparent;padding:0.75rem 1rem;cursor:pointer;white-space:nowrap;text-transform:uppercase;transition:all 0.2s;margin-bottom:-2px;}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+.tab-btn:hover:not(.active){color:var(--text2);}
+.tab-panel{display:none;}.tab-panel.active{display:block;}
+
+/* SETUP */
+#setup-screen{display:none;position:fixed;inset:0;background:var(--bg);z-index:100;align-items:center;justify-content:center;flex-direction:column;padding:2rem;}
+#setup-screen.active{display:flex;}
+.setup-box{max-width:480px;width:100%;border:2px solid var(--accent);padding:3rem 2.5rem;background:var(--bg2);position:relative;}
+.setup-box::before{content:'';position:absolute;top:-6px;left:-6px;right:-6px;bottom:-6px;border:1px solid var(--border2);pointer-events:none;}
+.setup-title{font-family:var(--font-d);font-size:clamp(3rem,10vw,5rem);color:var(--accent);letter-spacing:0.05em;line-height:0.9;margin-bottom:0.5rem;}
+.setup-sub{font-family:var(--font-m);color:var(--text2);font-size:0.75rem;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:2.5rem;border-left:3px solid var(--accent);padding-left:0.75rem;}
+.setup-label{font-family:var(--font-m);font-size:0.7rem;letter-spacing:0.2em;color:var(--text2);text-transform:uppercase;margin-bottom:0.5rem;display:block;}
+.setup-input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-left:3px solid var(--accent);color:var(--text);font-family:var(--font-m);font-size:1rem;padding:0.75rem 1rem;outline:none;margin-bottom:1.5rem;transition:border-color 0.2s;-webkit-appearance:none;appearance:none;color-scheme:dark;}
+.setup-input:focus{border-color:var(--accent2);}
+.btn-primary{background:var(--accent);color:#fff;font-family:var(--font-d);font-size:1.5rem;letter-spacing:0.1em;border:none;padding:0.75rem 2.5rem;cursor:pointer;transition:background 0.15s,transform 0.1s;width:100%;text-transform:uppercase;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px));}
+.btn-primary:hover{background:var(--accent2);}
+.btn-primary:active{transform:scale(0.98);}
+
+/* HEADER */
+.header{background:var(--bg2);border-bottom:2px solid var(--accent);padding:0.85rem 1.25rem;position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:0.75rem;}
+.header-brand{font-family:var(--font-d);font-size:clamp(1.4rem,4vw,2rem);color:var(--accent);letter-spacing:0.05em;line-height:1;}
+.header-brand span{color:var(--text2);font-size:0.4em;font-family:var(--font-m);letter-spacing:0.2em;display:block;margin-top:2px;}
+.header-right{display:flex;gap:0.5rem;align-items:center;flex-shrink:0;}
+.header-stats{display:flex;gap:1rem;align-items:center;}
+.stat-pill{text-align:center;line-height:1.2;}
+.stat-pill .val{font-family:var(--font-d);font-size:clamp(1.1rem,3vw,1.6rem);color:var(--gold);display:block;}
+.stat-pill .lbl{font-family:var(--font-m);font-size:0.55rem;color:var(--text3);letter-spacing:0.12em;text-transform:uppercase;}
+.icon-btn{background:transparent;border:1px solid var(--border2);color:var(--text2);font-size:1rem;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;flex-shrink:0;}
+.icon-btn:hover{border-color:var(--text2);color:var(--text);}
+
+/* QUOTE BANNER */
+.quote-banner{background:var(--bg2);border-bottom:1px solid var(--border);padding:0.85rem 1.25rem;display:flex;gap:1rem;align-items:flex-start;}
+.quote-sword{font-size:1.2rem;flex-shrink:0;margin-top:2px;}
+.quote-text{font-family:var(--font-m);font-size:0.7rem;color:var(--text2);letter-spacing:0.05em;line-height:1.6;font-style:italic;}
+.quote-attr{font-family:var(--font-m);font-size:0.6rem;color:var(--text3);letter-spacing:0.15em;text-transform:uppercase;margin-top:0.25rem;}
+
+/* COUNTDOWN */
+.countdown-bar{background:var(--bg3);border-bottom:1px solid var(--border);padding:0.6rem 1.25rem;display:flex;gap:1.5rem;align-items:center;overflow-x:auto;}
+.cd-unit{text-align:center;flex-shrink:0;}
+.cd-val{font-family:var(--font-d);font-size:1.4rem;color:var(--accent);line-height:1;}
+.cd-lbl{font-family:var(--font-m);font-size:0.5rem;color:var(--text3);letter-spacing:0.15em;text-transform:uppercase;}
+.cd-sep{font-family:var(--font-d);font-size:1.2rem;color:var(--border2);flex-shrink:0;}
+
+/* PROGRESS */
+.progress-section{padding:0.85rem 1.25rem 0;background:var(--bg2);border-bottom:1px solid var(--border);}
+.progress-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.35rem;}
+.progress-label{font-family:var(--font-m);font-size:0.6rem;color:var(--text2);letter-spacing:0.2em;text-transform:uppercase;}
+.progress-pct{font-family:var(--font-d);font-size:1rem;color:var(--accent);}
+.progress-track{width:100%;height:5px;background:var(--border);margin-bottom:0.85rem;overflow:hidden;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width 0.6s cubic-bezier(0.4,0,0.2,1);}
+
+/* CURRENT DAY */
+.current-day-banner{padding:1.25rem;background:var(--bg2);border-bottom:1px solid var(--border);}
+.day-number-display{font-family:var(--font-d);font-size:clamp(2.5rem,9vw,5rem);line-height:0.85;display:flex;align-items:baseline;gap:0.2em;}
+.day-number-display .num{color:var(--accent);}
+.day-number-display .of75{color:var(--text3);font-size:0.4em;}
+.day-date-sub{font-family:var(--font-m);font-size:0.65rem;color:var(--text2);letter-spacing:0.2em;text-transform:uppercase;margin-top:0.2rem;}
+
+/* SECTIONS */
+.section{padding:1.25rem;border-bottom:1px solid var(--border);}
+.section-title{font-family:var(--font-d);font-size:1.3rem;letter-spacing:0.1em;color:var(--text);margin-bottom:1.1rem;display:flex;align-items:center;gap:0.75rem;}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* TASKS */
+.task-list{display:flex;flex-direction:column;gap:0.5rem;}
+.task-item{background:var(--bg3);border:1px solid var(--border);border-left:3px solid var(--border2);padding:0.8rem 0.9rem;display:flex;align-items:center;gap:0.7rem;transition:border-color 0.2s,background 0.2s;cursor:pointer;user-select:none;}
+.task-item:hover{border-color:var(--text3);}
+.task-item.done{border-left-color:var(--green);background:rgba(0,230,118,0.04);}
+.task-item.done .task-label{color:var(--text2);}
+.task-check{width:20px;height:20px;border:2px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
+.task-item.done .task-check{background:var(--green);border-color:var(--green);}
+.task-check-icon{display:none;}
+.task-item.done .task-check-icon{display:block;}
+.task-label{font-family:var(--font-b);font-weight:400;font-size:0.9rem;letter-spacing:0.04em;flex:1;transition:color 0.2s;}
+.task-icon{font-size:1rem;width:1.4rem;text-align:center;}
+.task-sub{font-family:var(--font-m);font-size:0.6rem;color:var(--text3);letter-spacing:0.1em;margin-left:auto;}
+
+/* WATER METER */
+.water-meter-wrap{padding:0 1.25rem 1.25rem;}
+.water-meter{display:flex;gap:0.3rem;align-items:flex-end;height:60px;margin-bottom:0.5rem;}
+.water-cup{flex:1;background:var(--border);border-radius:2px 2px 0 0;cursor:pointer;transition:background 0.2s;position:relative;min-width:0;}
+.water-cup.filled{background:var(--blue);}
+.water-cup:hover{opacity:0.8;}
+.water-label-row{display:flex;justify-content:space-between;}
+.water-oz-label{font-family:var(--font-m);font-size:0.55rem;color:var(--text3);letter-spacing:0.1em;}
+.water-total{font-family:var(--font-d);font-size:1.1rem;color:var(--blue);}
+
+/* WEIGHT */
+.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.75rem;}
+.metric-input-wrap{display:flex;flex-direction:column;gap:0.3rem;}
+.metric-label{font-family:var(--font-m);font-size:0.6rem;color:var(--text2);letter-spacing:0.15em;text-transform:uppercase;}
+.metric-input{background:var(--bg3);border:1px solid var(--border2);border-left:3px solid var(--accent);color:var(--text);font-family:var(--font-d);font-size:1.4rem;padding:0.4rem 0.6rem;outline:none;width:100%;-moz-appearance:textfield;-webkit-appearance:none;appearance:none;}
+.metric-input::-webkit-outer-spin-button,.metric-input::-webkit-inner-spin-button{-webkit-appearance:none;}
+.metric-input.sleep-color{border-left-color:var(--purple);}
+.metric-input.weight-color{border-left-color:var(--gold);}
+.btn-sm{background:var(--accent);color:#fff;font-family:var(--font-d);font-size:1rem;letter-spacing:0.08em;border:none;padding:0.5rem 1.25rem;cursor:pointer;transition:opacity 0.2s;}
+.btn-sm:hover{opacity:0.85;}
+
+/* NOTES */
+.notes-textarea{width:100%;background:var(--bg3);border:1px solid var(--border2);border-left:3px solid var(--gold);color:var(--text);font-family:var(--font-m);font-size:0.75rem;padding:0.75rem;outline:none;resize:vertical;min-height:80px;line-height:1.6;letter-spacing:0.05em;}
+.notes-textarea::placeholder{color:var(--text3);}
+.btn-save-note{margin-top:0.5rem;background:transparent;border:1px solid var(--gold);color:var(--gold);font-family:var(--font-m);font-size:0.65rem;letter-spacing:0.15em;padding:0.4rem 1rem;cursor:pointer;text-transform:uppercase;transition:all 0.2s;}
+.btn-save-note:hover{background:var(--gold);color:#000;}
+
+/* PHOTO */
+.photo-task{flex-direction:column;align-items:stretch;cursor:default;}
+.photo-task-header{display:flex;align-items:center;gap:0.7rem;}
+.photo-preview{display:none;margin-top:0.6rem;}
+.photo-preview.visible{display:block;}
+.photo-preview img{width:70px;height:70px;object-fit:cover;border:2px solid var(--green);}
+.photo-upload-btn{display:inline-block;margin-top:0.5rem;font-family:var(--font-m);font-size:0.6rem;letter-spacing:0.15em;color:var(--text2);background:var(--bg);border:1px solid var(--border2);padding:0.3rem 0.65rem;cursor:pointer;transition:all 0.2s;text-transform:uppercase;}
+.photo-upload-btn:hover{border-color:var(--accent);color:var(--accent);}
+input[type="file"]{display:none;}
+
+/* COMPLETION */
+.day-complete-banner{display:none;background:linear-gradient(135deg,rgba(0,230,118,0.12),rgba(0,230,118,0.04));border:1px solid var(--green);border-left:4px solid var(--green);padding:0.9rem 1.25rem;margin:0 1.25rem 1.25rem;align-items:center;gap:0.9rem;animation:slideIn 0.4s ease;}
+.day-complete-banner.visible{display:flex;}
+.complete-icon{font-size:1.8rem;animation:pulse 1.5s infinite;}
+.complete-text .big{font-family:var(--font-d);font-size:1.3rem;color:var(--green);letter-spacing:0.1em;}
+.complete-text .small{font-family:var(--font-m);font-size:0.6rem;color:var(--text2);letter-spacing:0.15em;text-transform:uppercase;margin-top:2px;}
+
+/* DRINKS */
+.drinks-panel{background:var(--bg3);border:1px solid var(--border2);border-left:3px solid var(--gold);padding:1.1rem;}
+.drinks-prompt{font-family:var(--font-b);font-size:0.85rem;color:var(--text);margin-bottom:0.85rem;letter-spacing:0.03em;}
+.drinks-input-row{display:flex;gap:0.65rem;align-items:center;}
+.drinks-number{width:75px;background:var(--bg);border:1px solid var(--border2);border-left:3px solid var(--gold);color:var(--gold);font-family:var(--font-d);font-size:1.6rem;padding:0.35rem 0.65rem;outline:none;text-align:center;-moz-appearance:textfield;-webkit-appearance:none;}
+.drinks-number::-webkit-outer-spin-button,.drinks-number::-webkit-inner-spin-button{-webkit-appearance:none;}
+.btn-log{background:var(--gold);color:#000;font-family:var(--font-d);font-size:1rem;letter-spacing:0.08em;border:none;padding:0.5rem 1.25rem;cursor:pointer;transition:opacity 0.2s;}
+.btn-log:hover{opacity:0.85;}
+.drinks-log{margin-top:1rem;display:flex;flex-direction:column;gap:0.35rem;}
+.drink-entry{display:flex;justify-content:space-between;align-items:center;padding:0.45rem 0.65rem;background:var(--bg2);border-left:2px solid var(--border2);font-family:var(--font-m);font-size:0.7rem;}
+.drink-entry.warning{border-left-color:var(--red);background:rgba(255,23,68,0.06);}
+.drink-week{color:var(--text2);letter-spacing:0.1em;}
+.drink-count{color:var(--text);font-size:0.85rem;}
+.drink-count.over{color:var(--red);}
+
+/* GRID */
+.day-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(50px,1fr));gap:0.35rem;}
+.day-tile{aspect-ratio:1;background:var(--bg3);border:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all 0.15s;position:relative;font-size:0.7rem;}
+.day-tile:hover{border-color:var(--text3);transform:scale(1.06);z-index:2;}
+.day-tile.complete{border-color:var(--green);background:rgba(0,230,118,0.08);}
+.day-tile.partial{border-color:var(--yellow);background:rgba(255,234,0,0.05);}
+.day-tile.future{opacity:0.3;cursor:default;}
+.day-tile.future:hover{transform:none;border-color:var(--border);}
+.day-tile.today{border-color:var(--accent);box-shadow:0 0 10px rgba(255,60,0,0.3);}
+.tile-num{font-family:var(--font-m);font-size:0.55rem;color:var(--text3);position:absolute;top:3px;left:4px;}
+.day-tile.today .tile-num{color:var(--accent);}
+.tile-emoji{font-size:0.95rem;line-height:1;}
+
+/* STATS TAB */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1.25rem;}
+.stat-card{background:var(--bg3);border:1px solid var(--border);border-left:3px solid var(--accent);padding:0.9rem;}
+.stat-card.green{border-left-color:var(--green);}
+.stat-card.gold{border-left-color:var(--gold);}
+.stat-card.blue{border-left-color:var(--blue);}
+.stat-card.purple{border-left-color:var(--purple);}
+.stat-card-val{font-family:var(--font-d);font-size:2rem;color:var(--text);line-height:1;margin-bottom:0.2rem;}
+.stat-card-lbl{font-family:var(--font-m);font-size:0.55rem;color:var(--text2);letter-spacing:0.15em;text-transform:uppercase;}
+
+/* CHART */
+.chart-wrap{background:var(--bg3);border:1px solid var(--border);padding:1rem;margin-bottom:1rem;}
+.chart-title{font-family:var(--font-m);font-size:0.6rem;color:var(--text2);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:0.75rem;}
+.chart-bars{display:flex;align-items:flex-end;gap:2px;height:80px;}
+.chart-bar{flex:1;min-width:0;border-radius:1px 1px 0 0;transition:all 0.3s;cursor:pointer;position:relative;}
+.chart-bar:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);background:var(--bg);border:1px solid var(--border2);font-family:var(--font-m);font-size:0.55rem;color:var(--text);padding:2px 5px;white-space:nowrap;z-index:10;}
+
+/* GALLERY */
+.gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:0.5rem;}
+.gallery-item{aspect-ratio:1;position:relative;background:var(--bg3);border:1px solid var(--border);overflow:hidden;cursor:pointer;}
+.gallery-item img{width:100%;height:100%;object-fit:cover;display:block;}
+.gallery-item .gallery-day{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.7);font-family:var(--font-m);font-size:0.55rem;color:#fff;text-align:center;padding:2px;letter-spacing:0.1em;}
+.gallery-empty{font-family:var(--font-m);font-size:0.7rem;color:var(--text3);letter-spacing:0.1em;text-align:center;padding:2rem;border:1px solid var(--border);}
+
+/* COMPARE */
+.compare-wrap{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-top:1rem;}
+.compare-slot{background:var(--bg3);border:1px solid var(--border);aspect-ratio:1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;}
+.compare-slot img{width:100%;height:100%;object-fit:cover;}
+.compare-slot .compare-label{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.75);font-family:var(--font-m);font-size:0.55rem;color:#fff;text-align:center;padding:3px;letter-spacing:0.1em;}
+.compare-slot .compare-empty{font-family:var(--font-m);font-size:0.6rem;color:var(--text3);letter-spacing:0.1em;text-align:center;padding:1rem;}
+.compare-selects{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.5rem;}
+.day-select{background:var(--bg3);border:1px solid var(--border2);border-left:3px solid var(--accent);color:var(--text);font-family:var(--font-m);font-size:0.7rem;padding:0.4rem 0.5rem;outline:none;width:100%;-webkit-appearance:none;appearance:none;}
+
+/* BOOK TRACKER */
+.book-card{background:var(--bg3);border:1px solid var(--border);border-left:3px solid var(--purple);padding:1rem;margin-bottom:0.75rem;}
+.book-title-input{width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);font-family:var(--font-b);font-size:0.9rem;padding:0.5rem 0.75rem;outline:none;margin-bottom:0.5rem;}
+.book-title-input::placeholder{color:var(--text3);}
+.book-pages-row{display:flex;gap:0.5rem;align-items:center;}
+.book-pages-input{width:80px;background:var(--bg);border:1px solid var(--border2);border-left:3px solid var(--purple);color:var(--purple);font-family:var(--font-d);font-size:1.4rem;padding:0.35rem 0.5rem;outline:none;text-align:center;-moz-appearance:textfield;-webkit-appearance:none;}
+.book-pages-input::-webkit-outer-spin-button,.book-pages-input::-webkit-inner-spin-button{-webkit-appearance:none;}
+.total-pages-read{font-family:var(--font-d);font-size:1.8rem;color:var(--purple);}
+.total-pages-lbl{font-family:var(--font-m);font-size:0.6rem;color:var(--text3);letter-spacing:0.15em;text-transform:uppercase;}
+
+/* EXPORT */
+.export-section{padding:1.25rem;}
+.export-info{font-family:var(--font-m);font-size:0.7rem;color:var(--text2);letter-spacing:0.08em;line-height:1.7;margin-bottom:1.25rem;border-left:3px solid var(--border2);padding-left:0.75rem;}
+.btn-export{background:transparent;border:2px solid var(--green);color:var(--green);font-family:var(--font-d);font-size:1.2rem;letter-spacing:0.1em;padding:0.65rem 2rem;cursor:pointer;transition:all 0.2s;display:block;width:100%;margin-bottom:0.75rem;}
+.btn-export:hover{background:var(--green);color:#000;}
+.btn-reset-full{background:transparent;border:2px solid var(--red);color:var(--red);font-family:var(--font-d);font-size:1.2rem;letter-spacing:0.1em;padding:0.65rem 2rem;cursor:pointer;transition:all 0.2s;display:block;width:100%;}
+.btn-reset-full:hover{background:var(--red);color:#fff;}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:200;align-items:flex-end;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--bg2);border-top:2px solid var(--accent);width:100%;max-width:600px;max-height:90vh;overflow-y:auto;padding:1.25rem;animation:slideUp 0.3s ease;}
+.modal-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.25rem;}
+.modal-day-title{font-family:var(--font-d);font-size:2.2rem;color:var(--accent);line-height:1;}
+.modal-date-sub{font-family:var(--font-m);font-size:0.6rem;color:var(--text2);letter-spacing:0.2em;margin-top:0.2rem;}
+.modal-close{background:transparent;border:1px solid var(--border2);color:var(--text2);font-family:var(--font-m);font-size:0.75rem;padding:0.3rem 0.65rem;cursor:pointer;letter-spacing:0.1em;transition:all 0.15s;flex-shrink:0;}
+.modal-close:hover{border-color:var(--red);color:var(--red);}
+.modal-note{margin-top:1rem;}
+.modal-note-label{font-family:var(--font-m);font-size:0.6rem;color:var(--text2);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:0.35rem;}
+.modal-note-text{font-family:var(--font-m);font-size:0.7rem;color:var(--text);line-height:1.6;background:var(--bg3);border:1px solid var(--border);padding:0.6rem;min-height:40px;}
+
+/* LIGHTBOX */
+.lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:500;align-items:center;justify-content:center;padding:1rem;}
+.lightbox.open{display:flex;}
+.lightbox img{max-width:100%;max-height:90vh;object-fit:contain;border:2px solid var(--border2);}
+.lightbox-close{position:absolute;top:1rem;right:1rem;background:transparent;border:1px solid var(--border2);color:var(--text2);font-family:var(--font-m);font-size:0.75rem;padding:0.35rem 0.75rem;cursor:pointer;}
+
+/* CONFIRM */
+.confirm-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:300;align-items:center;justify-content:center;padding:1.5rem;}
+.confirm-overlay.open{display:flex;}
+.confirm-box{background:var(--bg2);border:2px solid var(--red);max-width:360px;width:100%;padding:1.75rem;}
+.confirm-title{font-family:var(--font-d);font-size:1.8rem;color:var(--red);letter-spacing:0.1em;margin-bottom:0.65rem;}
+.confirm-body{font-family:var(--font-m);font-size:0.7rem;color:var(--text2);letter-spacing:0.08em;line-height:1.7;margin-bottom:1.25rem;}
+.confirm-btns{display:flex;gap:0.65rem;}
+.btn-danger{background:var(--red);color:#fff;font-family:var(--font-d);font-size:1.1rem;letter-spacing:0.1em;border:none;padding:0.55rem 1.25rem;cursor:pointer;flex:1;transition:opacity 0.2s;}
+.btn-danger:hover{opacity:0.85;}
+.btn-cancel{background:transparent;border:1px solid var(--border2);color:var(--text2);font-family:var(--font-d);font-size:1.1rem;letter-spacing:0.1em;padding:0.55rem 1.25rem;cursor:pointer;flex:1;transition:all 0.2s;}
+.btn-cancel:hover{border-color:var(--text2);color:var(--text);}
+
+/* CONFETTI */
+.confetti-container{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:90;overflow:hidden;display:none;}
+.confetti-container.active{display:block;}
+.confetti-piece{position:absolute;width:8px;height:8px;top:-10px;animation:confettiFall linear forwards;border-radius:1px;}
+
+/* ANIMATIONS */
+@keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.15);}}
+@keyframes slideIn{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}
+@keyframes slideUp{from{transform:translateY(30px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+@keyframes confettiFall{0%{transform:translateY(0) rotate(0deg);opacity:1;}100%{transform:translateY(100vh) rotate(720deg);opacity:0;}}
+
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border2);}
+
+@media(max-width:480px){
+  .header-stats{gap:0.6rem;}
+  .stat-pill .val{font-size:1.1rem;}
+  .day-grid{grid-template-columns:repeat(auto-fill,minmax(42px,1fr));}
+  .stats-grid{grid-template-columns:1fr 1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- SETUP -->
+<div id="setup-screen" class="active">
+  <div class="setup-box">
+    <div class="setup-title">75<br>HARD</div>
+    <div class="setup-sub">// Challenge Tracker — Initialize Protocol</div>
+    <label class="setup-label" for="start-date-input">Select Your Start Date</label>
+    <input type="date" id="start-date-input" class="setup-input">
+    <label class="setup-label" for="setup-name-input">Your Name (optional)</label>
+    <input type="text" id="setup-name-input" class="setup-input" placeholder="SOLDIER">
+    <button class="btn-primary" onclick="initChallenge()">ENGAGE CHALLENGE</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-brand">
+      75 HARD
+      <span id="header-name-sub">// MENTAL TOUGHNESS PROTOCOL</span>
+    </div>
+    <div class="header-right">
+      <div class="header-stats">
+        <div class="stat-pill">
+          <span class="val" id="streak-val">0</span>
+          <span class="lbl">Streak</span>
+        </div>
+        <div class="stat-pill">
+          <span class="val" id="days-done-val">0</span>
+          <span class="lbl">Done</span>
+        </div>
+      </div>
+      <button class="icon-btn" onclick="toggleTheme()" title="Toggle theme" id="theme-btn">☀️</button>
+    </div>
+  </div>
+
+  <!-- QUOTE -->
+  <div class="quote-banner">
+    <div class="quote-sword">⚔️</div>
+    <div>
+      <div class="quote-text" id="quote-text">"The secret of getting ahead is getting started."</div>
+      <div class="quote-attr" id="quote-attr">— Marcus Aurelius</div>
+    </div>
+  </div>
+
+  <!-- COUNTDOWN -->
+  <div class="countdown-bar">
+    <div class="cd-unit"><div class="cd-val" id="cd-days">--</div><div class="cd-lbl">Days</div></div>
+    <div class="cd-sep">:</div>
+    <div class="cd-unit"><div class="cd-val" id="cd-hours">--</div><div class="cd-lbl">Hrs</div></div>
+    <div class="cd-sep">:</div>
+    <div class="cd-unit"><div class="cd-val" id="cd-mins">--</div><div class="cd-lbl">Min</div></div>
+    <div class="cd-sep">:</div>
+    <div class="cd-unit"><div class="cd-val" id="cd-secs">--</div><div class="cd-lbl">Sec</div></div>
+    <div style="margin-left:auto;font-family:var(--font-m);font-size:0.6rem;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;flex-shrink:0;">Until Day 75</div>
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="progress-section">
+    <div class="progress-meta">
+      <span class="progress-label">Overall Progress</span>
+      <span class="progress-pct" id="progress-pct">0%</span>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+  </div>
+
+  <!-- TABS -->
+  <div class="app-tabs">
+    <button class="tab-btn active" onclick="switchTab('today',this)">[ TODAY ]</button>
+    <button class="tab-btn" onclick="switchTab('grid',this)">[ GRID ]</button>
+    <button class="tab-btn" onclick="switchTab('stats',this)">[ STATS ]</button>
+    <button class="tab-btn" onclick="switchTab('gallery',this)">[ PHOTOS ]</button>
+    <button class="tab-btn" onclick="switchTab('books',this)">[ BOOKS ]</button>
+    <button class="tab-btn" onclick="switchTab('drinks',this)">[ DRINKS ]</button>
+    <button class="tab-btn" onclick="switchTab('export',this)">[ EXPORT ]</button>
+  </div>
+
+  <!-- TODAY TAB -->
+  <div class="tab-panel active" id="tab-today">
+    <div class="current-day-banner">
+      <div class="day-number-display">
+        <span class="num" id="current-day-num">1</span>
+        <span class="of75">/ 75</span>
+      </div>
+      <div class="day-date-sub" id="current-day-date">TODAY</div>
+    </div>
+
+    <div class="day-complete-banner" id="complete-banner">
+      <div class="complete-icon">🔥</div>
+      <div class="complete-text">
+        <div class="big">DAY COMPLETE</div>
+        <div class="small">// All objectives achieved — maintain discipline</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">OBJECTIVES</div>
+      <div class="task-list" id="task-list"></div>
+    </div>
+
+    <!-- WATER METER -->
+    <div class="section" style="padding-bottom:0.5rem;">
+      <div class="section-title">HYDRATION GAUGE</div>
+      <div class="water-meter" id="water-meter"></div>
+      <div class="water-label-row" style="padding:0 0 0.75rem;">
+        <span class="water-oz-label">0 oz</span>
+        <span class="water-total"><span id="water-oz-total">0</span> <span style="font-family:var(--font-m);font-size:0.6rem;color:var(--text3)">/ 128 oz</span></span>
+        <span class="water-oz-label">128 oz</span>
+      </div>
+    </div>
+
+    <!-- METRICS -->
+    <div class="section">
+      <div class="section-title">DAILY METRICS</div>
+      <div class="metric-grid">
+        <div class="metric-input-wrap">
+          <span class="metric-label">⚖️ Weight (lbs)</span>
+          <input type="number" class="metric-input weight-color" id="weight-input" placeholder="185" min="50" max="500" step="0.1">
+        </div>
+        <div class="metric-input-wrap">
+          <span class="metric-label">😴 Sleep (hrs)</span>
+          <input type="number" class="metric-input sleep-color" id="sleep-input" placeholder="7.5" min="0" max="24" step="0.5">
+        </div>
+      </div>
+      <button class="btn-sm" onclick="saveMetrics()">SAVE METRICS</button>
+    </div>
+
+    <!-- NOTES -->
+    <div class="section">
+      <div class="section-title">FIELD NOTES</div>
+      <textarea class="notes-textarea" id="notes-input" placeholder="// Log your thoughts, meals, workouts, mindset..."></textarea>
+      <button class="btn-save-note" onclick="saveNote()">[ SAVE NOTE ]</button>
+    </div>
+  </div>
+
+  <!-- GRID TAB -->
+  <div class="tab-panel" id="tab-grid">
+    <div class="section">
+      <div class="section-title">MISSION OVERVIEW</div>
+      <div class="day-grid" id="day-grid"></div>
+    </div>
+  </div>
+
+  <!-- STATS TAB -->
+  <div class="tab-panel" id="tab-stats">
+    <div class="section">
+      <div class="section-title">PERFORMANCE STATS</div>
+      <div class="stats-grid" id="stats-grid"></div>
+      <div class="chart-wrap">
+        <div class="chart-title">// WEEKLY COMPLETION RATE</div>
+        <div class="chart-bars" id="completion-chart"></div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title">// WEIGHT TREND (lbs)</div>
+        <div class="chart-bars" id="weight-chart"></div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title">// SLEEP TREND (hrs)</div>
+        <div class="chart-bars" id="sleep-chart"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GALLERY TAB -->
+  <div class="tab-panel" id="tab-gallery">
+    <div class="section">
+      <div class="section-title">PROGRESS GALLERY</div>
+      <div class="gallery-grid" id="gallery-grid"></div>
+    </div>
+    <div class="section">
+      <div class="section-title">SIDE BY SIDE COMPARE</div>
+      <div class="compare-selects">
+        <select class="day-select" id="compare-a" onchange="renderCompare()"><option value="">Day A</option></select>
+        <select class="day-select" id="compare-b" onchange="renderCompare()"><option value="">Day B</option></select>
+      </div>
+      <div class="compare-wrap" id="compare-wrap">
+        <div class="compare-slot"><div class="compare-empty">Select a day</div></div>
+        <div class="compare-slot"><div class="compare-empty">Select a day</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOOKS TAB -->
+  <div class="tab-panel" id="tab-books">
+    <div class="section">
+      <div class="section-title">BOOK TRACKER</div>
+      <div class="book-card">
+        <div style="font-family:var(--font-m);font-size:0.6rem;color:var(--text2);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:0.5rem;">Current Book</div>
+        <input type="text" class="book-title-input" id="book-title-input" placeholder="Book title...">
+        <div class="book-pages-row">
+          <div>
+            <div style="font-family:var(--font-m);font-size:0.6rem;color:var(--text2);letter-spacing:0.1em;margin-bottom:0.25rem;">Pages today</div>
+            <input type="number" class="book-pages-input" id="book-pages-input" min="0" max="9999" placeholder="10">
+          </div>
+          <button class="btn-sm" style="margin-left:0.75rem;" onclick="saveBookEntry()">LOG</button>
+        </div>
+      </div>
+      <div style="margin-bottom:1rem;">
+        <div class="total-pages-lbl">Total Pages Read</div>
+        <div class="total-pages-read" id="total-pages-read">0</div>
+      </div>
+      <div id="book-log"></div>
+    </div>
+  </div>
+
+  <!-- DRINKS TAB -->
+  <div class="tab-panel" id="tab-drinks">
+    <div class="section">
+      <div class="section-title">WEEKLY INTAKE LOG</div>
+      <div class="drinks-panel">
+        <div class="drinks-prompt">Log drinks for Week <span id="current-week-num">1</span></div>
+        <div class="drinks-input-row">
+          <input type="number" class="drinks-number" id="drinks-input" min="0" max="50" value="0">
+          <button class="btn-log" onclick="logDrinks()">LOG WEEK</button>
+        </div>
+        <div class="drinks-log" id="drinks-log"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXPORT TAB -->
+  <div class="tab-panel" id="tab-export">
+    <div class="export-section">
+      <div class="section-title">DATA MANAGEMENT</div>
+      <div class="export-info">
+        Export downloads all your challenge data as a JSON file.<br>
+        Photos are NOT included in the export to keep file size manageable.<br>
+        Store this file as your backup.
+      </div>
+      <button class="btn-export" onclick="exportData()">⬇ EXPORT DATA</button>
+      <div style="margin:1.5rem 0;border-top:1px solid var(--border);"></div>
+      <div class="export-info" style="border-left-color:var(--red);color:var(--red);">
+        ⚠ DANGER ZONE — Resetting will permanently erase ALL data including photos.
+      </div>
+      <button class="btn-reset-full" onclick="confirmReset()">⚠ RESET CHALLENGE</button>
+    </div>
+  </div>
+
+</div><!-- end app -->
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal-content">
+    <div class="modal-header">
+      <div>
+        <div class="modal-day-title" id="modal-title">DAY 1</div>
+        <div class="modal-date-sub" id="modal-date"></div>
+      </div>
+      <button class="modal-close" onclick="closeModalDirect()">[ CLOSE ]</button>
+    </div>
+    <div class="task-list" id="modal-task-list"></div>
+    <div class="modal-note" id="modal-note-wrap">
+      <div class="modal-note-label">Field Notes</div>
+      <div class="modal-note-text" id="modal-note-text"></div>
+    </div>
+  </div>
+</div>
+
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <img id="lightbox-img" src="" alt="Progress photo">
+  <button class="lightbox-close" onclick="closeLightbox()">[ CLOSE ]</button>
+</div>
+
+<!-- CONFIRM -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <div class="confirm-title">ABORT MISSION?</div>
+    <div class="confirm-body">This will erase ALL progress, photos, notes, and data. The challenge will restart from scratch.<br><br>THIS CANNOT BE UNDONE.</div>
+    <div class="confirm-btns">
+      <button class="btn-danger" onclick="executeReset()">CONFIRM</button>
+      <button class="btn-cancel" onclick="cancelReset()">STAND DOWN</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFETTI -->
+<div class="confetti-container" id="confetti-container"></div>
+
+<script>
+// ============================================================
+// CONSTANTS & QUOTES
+// ============================================================
+const TOTAL = 75;
+const WATER_CUPS = 16; // 16 x 8oz = 128oz = 1 gallon
+
+const QUOTES = [
+  {q:"In war, the victorious strategist only seeks battle after the victory has been won.",a:"— Sun Tzu, The Art of War"},
+  {q:"If you know the enemy and know yourself, you need not fear the result of a hundred battles.",a:"— Sun Tzu"},
+  {q:"Opportunities multiply as they are seized.",a:"— Sun Tzu"},
+  {q:"Let your plans be dark and impenetrable as night, and when you move, fall like a thunderbolt.",a:"— Sun Tzu"},
+  {q:"The supreme art of war is to subdue the enemy without fighting.",a:"— Sun Tzu"},
+  {q:"Victorious warriors win first and then go to war, while defeated warriors go to war first and then seek to win.",a:"— Sun Tzu"},
+  {q:"I came, I saw, I conquered.",a:"— Julius Caesar"},
+  {q:"As a rule, men worry more about what they can't see than about what they can.",a:"— Julius Caesar"},
+  {q:"It is easier to find men who will volunteer to die, than to find those who are willing to endure pain with patience.",a:"— Julius Caesar"},
+  {q:"No man is so brave that he is not disturbed by something unexpected.",a:"— Julius Caesar"},
+  {q:"Fortune, which has a great deal of power in other matters but especially in war, can bring about great changes in a situation through very slight forces.",a:"— Julius Caesar"},
+  {q:"I would rather be first in a village than second in Rome.",a:"— Julius Caesar"},
+  {q:"You shall be conqueror not by strength of body but by strength of soul.",a:"— Alexander the Great"},
+  {q:"There is nothing impossible to him who will try.",a:"— Alexander the Great"},
+  {q:"Remember upon the conduct of each depends the fate of all.",a:"— Alexander the Great"},
+  {q:"I am not afraid of an army of lions led by a sheep; I am afraid of an army of sheep led by a lion.",a:"— Alexander the Great"},
+  {q:"Waste no more time arguing about what a good man should be. Be one.",a:"— Marcus Aurelius"},
+  {q:"You have power over your mind, not outside events. Realize this, and you will find strength.",a:"— Marcus Aurelius"},
+  {q:"The impediment to action advances action. What stands in the way becomes the way.",a:"— Marcus Aurelius"},
+  {q:"Do not indulge in dreams of what you have not, but count the blessings actually present.",a:"— Marcus Aurelius"},
+  {q:"If it is not right, do not do it; if it is not true, do not say it.",a:"— Marcus Aurelius"},
+  {q:"Accept the things to which fate binds you, and love the people with whom fate brings you together.",a:"— Marcus Aurelius"},
+  {q:"The first and greatest victory is to conquer yourself.",a:"— Plato"},
+  {q:"We are twice armed if we fight with faith.",a:"— Plato"},
+  {q:"Only the dead have seen the end of war.",a:"— Plato"},
+  {q:"We must not look at goblin men, we must not buy their fruits.",a:"— Hannibal Barca (attr.)"},
+  {q:"I will either find a way or make one.",a:"— Hannibal Barca"},
+  {q:"We shall either find a way or make one.",a:"— Hannibal Barca"},
+  {q:"Suffer the pain of discipline or suffer the pain of regret.",a:"— Attributed to various generals of antiquity"},
+  {q:"An army of lions commanded by a deer will never be an army of lions.",a:"— Napoleon (echoing the ancients)"},
+  {q:"He who sweats more in training bleeds less in battle.",a:"— Spartan maxim"},
+  {q:"Come back with your shield, or on it.",a:"— Spartan mother's charge"},
+  {q:"A smooth sea never made a skilled sailor.",a:"— Ancient proverb"},
+  {q:"The tree that does not bend will break.",a:"— Ancient proverb"},
+  {q:"Through me passage to the city of woe, through me passage to eternal pain.",a:"— Dante (warrior's gate)"},
+  {q:"It is not the mountain we conquer but ourselves.",a:"— Edmund Hillary"},
+  {q:"The general who advances without coveting fame and retreats without fearing disgrace is the jewel of the kingdom.",a:"— Sun Tzu"},
+  {q:"Move swift as the wind and closely-formed as the wood; attack like the fire and be still as the mountain.",a:"— Sun Tzu"},
+];
+
+// ============================================================
+// STATE
+// ============================================================
+function getState(){return JSON.parse(localStorage.getItem('75hard_v2')||'null');}
+function saveState(s){localStorage.setItem('75hard_v2',JSON.stringify(s));}
+function defaultState(start,name){
+  return {startDate:start,name:name||'',days:{},drinks:{},books:{},metrics:{},notes:{}};
+}
+function getDayData(s,d){
+  if(!s.days[d])s.days[d]={calorie:false,w1:false,w2:false,read:false,water:false,photo:false,w1label:'Workout 1',w2label:'Workout 2',waterCups:0};
+  if(s.days[d].waterCups===undefined)s.days[d].waterCups=0;
+  return s.days[d];
+}
+function isDayComplete(s,d){
+  const dd=getDayData(s,d);
+  return dd.calorie&&dd.w1&&dd.w2&&dd.read&&dd.water&&dd.photo;
+}
+function calcCurrentDay(){
+  const s=getState();if(!s)return 1;
+  const today=new Date();today.setHours(0,0,0,0);
+  const start=new Date(s.startDate);start.setHours(0,0,0,0);
+  const diff=Math.floor((today-start)/86400000)+1;
+  return Math.max(1,Math.min(diff,TOTAL));
+}
+function calcCurrentWeek(){return Math.ceil(calcCurrentDay()/7);}
+function getDateForDay(d){
+  const s=getState();
+  const start=new Date(s.startDate);start.setHours(0,0,0,0);
+  const date=new Date(start);date.setDate(date.getDate()+d-1);
+  return date;
+}
+function formatDate(date){return date.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});}
+function calcStreak(s){
+  let streak=0;const today=calcCurrentDay();
+  for(let d=today;d>=1;d--){if(isDayComplete(s,d))streak++;else break;}
+  return streak;
+}
+function countCompleteDays(s){
+  let n=0;const today=calcCurrentDay();
+  for(let d=1;d<=today;d++){if(isDayComplete(s,d))n++;}
+  return n;
+}
+
+// ============================================================
+// BOOT
+// ============================================================
+let countdownInterval=null;
+let quoteInterval=null;
+
+function boot(){
+  const s=getState();
+  if(!s){
+    const today=new Date();
+    document.getElementById('start-date-input').value=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    document.getElementById('setup-screen').classList.add('active');
+    document.getElementById('app').style.display='none';
+  } else {
+    document.getElementById('setup-screen').classList.remove('active');
+    document.getElementById('app').style.display='block';
+    applyTheme();
+    renderAll(s);
+    startCountdown(s);
+    startQuoteRotation(s);
+  }
+}
+
+function initChallenge(){
+  const val=document.getElementById('start-date-input').value;
+  if(!val){alert('Please select a start date.');return;}
+  const name=document.getElementById('setup-name-input').value.trim().toUpperCase()||'SOLDIER';
+  const s=defaultState(val,name);
+  saveState(s);
+  document.getElementById('setup-screen').classList.remove('active');
+  document.getElementById('app').style.display='block';
+  applyTheme();
+  renderAll(s);
+  startCountdown(s);
+  startQuoteRotation(s);
+}
+
+// ============================================================
+// THEME
+// ============================================================
+function applyTheme(){
+  const dark=localStorage.getItem('75hard_theme')!=='light';
+  document.body.classList.toggle('light-mode',!dark);
+  document.getElementById('theme-btn').textContent=dark?'☀️':'🌑';
+}
+function toggleTheme(){
+  const isDark=!document.body.classList.contains('light-mode');
+  localStorage.setItem('75hard_theme',isDark?'light':'dark');
+  applyTheme();
+}
+
+// ============================================================
+// QUOTE ROTATION
+// ============================================================
+function startQuoteRotation(s){
+  setQuote();
+  if(quoteInterval)clearInterval(quoteInterval);
+  quoteInterval=setInterval(setQuote,20000);
+}
+function setQuote(){
+  const q=QUOTES[Math.floor(Math.random()*QUOTES.length)];
+  document.getElementById('quote-text').textContent='"'+q.q+'"';
+  document.getElementById('quote-attr').textContent=q.a;
+}
+
+// ============================================================
+// COUNTDOWN
+// ============================================================
+function startCountdown(s){
+  if(countdownInterval)clearInterval(countdownInterval);
+  updateCountdown(s);
+  countdownInterval=setInterval(()=>updateCountdown(s),1000);
+}
+function updateCountdown(s){
+  const start=new Date(s.startDate);start.setHours(0,0,0,0);
+  const end=new Date(start);end.setDate(end.getDate()+75);
+  const now=new Date();
+  const diff=end-now;
+  if(diff<=0){
+    document.getElementById('cd-days').textContent='00';
+    document.getElementById('cd-hours').textContent='00';
+    document.getElementById('cd-mins').textContent='00';
+    document.getElementById('cd-secs').textContent='00';
+    return;
+  }
+  const days=Math.floor(diff/86400000);
+  const hours=Math.floor((diff%86400000)/3600000);
+  const mins=Math.floor((diff%3600000)/60000);
+  const secs=Math.floor((diff%60000)/1000);
+  document.getElementById('cd-days').textContent=String(days).padStart(2,'0');
+  document.getElementById('cd-hours').textContent=String(hours).padStart(2,'0');
+  document.getElementById('cd-mins').textContent=String(mins).padStart(2,'0');
+  document.getElementById('cd-secs').textContent=String(secs).padStart(2,'0');
+}
+
+// ============================================================
+// RENDER ALL
+// ============================================================
+function renderAll(s){
+  const day=calcCurrentDay();
+  const streak=calcStreak(s);
+  const done=countCompleteDays(s);
+  const pct=Math.round((done/TOTAL)*100);
+
+  document.getElementById('streak-val').textContent=streak;
+  document.getElementById('days-done-val').textContent=done;
+  document.getElementById('progress-pct').textContent=pct+'%';
+  document.getElementById('progress-fill').style.width=pct+'%';
+  document.getElementById('current-day-num').textContent=day;
+  document.getElementById('current-day-date').textContent='TODAY — '+formatDate(getDateForDay(day)).toUpperCase();
+
+  if(s.name) document.getElementById('header-name-sub').textContent='// '+s.name;
+
+  // Week
+  const week=calcCurrentWeek();
+  document.getElementById('current-week-num').textContent=week;
+  const existing=s.drinks[week];
+  if(existing!==undefined)document.getElementById('drinks-input').value=existing;
+
+  renderTaskList(s,day,'task-list',true);
+  renderWaterMeter(s,day);
+  renderMetricInputs(s,day);
+  renderNoteInput(s,day);
+
+  const banner=document.getElementById('complete-banner');
+  isDayComplete(s,day)?banner.classList.add('visible'):banner.classList.remove('visible');
+
+  renderDrinksLog(s);
+  renderGrid(s);
+  renderStats(s);
+  renderGallery(s);
+  renderBooks(s);
+}
+
+// ============================================================
+// TABS
+// ============================================================
+function switchTab(id,btn){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  btn.classList.add('active');
+  if(id==='stats'){const s=getState();renderStats(s);}
+  if(id==='gallery'){const s=getState();renderGallery(s);}
+}
+
+// ============================================================
+// TASKS
+// ============================================================
+const TASKS=[
+  {key:'calorie',label:'Calorie Deficit',icon:'🔥',single:true},
+  {key:'w1',label:'Workout 1',icon:'💪',single:true,customLabel:true},
+  {key:'w2',label:'Workout 2',icon:'🏋️',single:true,customLabel:true},
+  {key:'read',label:'Read 10 Pages',icon:'📖',single:true},
+  {key:'water',label:'1 Gallon Water',icon:'💧',single:true},
+  {key:'photo',label:'Progress Photo',icon:'📸',single:false},
+];
+
+function renderTaskList(s,day,containerId,isToday){
+  const container=document.getElementById(containerId);
+  const dd=getDayData(s,day);
+  const isFuture=day>calcCurrentDay();
+  container.innerHTML='';
+
+  TASKS.forEach(t=>{
+    const done=dd[t.key];
+    if(t.single){
+      const el=document.createElement('div');
+      el.className='task-item'+(done?' done':'');
+      let labelText=t.label;
+      if(t.customLabel){
+        labelText=dd[t.key+'label']||t.label;
+      }
+      el.innerHTML=`
+        <div class="task-check"><svg class="task-check-icon" width="12" height="10" viewBox="0 0 12 10"><path d="M1 5L4.5 8.5L11 1.5" stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round" fill="none"/></svg></div>
+        <span class="task-icon">${t.icon}</span>
+        <span class="task-label">${labelText}</span>
+      `;
+      if(!isFuture){
+        el.addEventListener('click',()=>{
+          const s2=getState();
+          const d2=getDayData(s2,day);
+          d2[t.key]=!d2[t.key];
+          saveState(s2);
+          if(isToday){checkCompletionAnimation(s2,day);renderAll(s2);}
+          else{renderTaskList(s2,day,containerId,false);renderGrid(s2);}
+        });
+        // Long-press to rename workouts
+        if(t.customLabel&&isToday){
+          el.addEventListener('contextmenu',e=>{
+            e.preventDefault();
+            const newName=prompt('Rename this workout:',dd[t.key+'label']||t.label);
+            if(newName){
+              const s2=getState();getDayData(s2,day)[t.key+'label']=newName.trim();
+              saveState(s2);renderAll(s2);
+            }
+          });
+        }
+      } else {el.style.opacity='0.4';el.style.cursor='default';}
+      container.appendChild(el);
+    } else {
+      const photoKey='photo_day_'+day;
+      const photoData=localStorage.getItem(photoKey);
+      const el=document.createElement('div');
+      el.className='task-item photo-task'+(done?' done':'');
+      el.innerHTML=`
+        <div class="photo-task-header">
+          <div class="task-check"><svg class="task-check-icon" width="12" height="10" viewBox="0 0 12 10"><path d="M1 5L4.5 8.5L11 1.5" stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round" fill="none"/></svg></div>
+          <span class="task-icon">${t.icon}</span>
+          <span class="task-label">${t.label}</span>
+        </div>
+        <div class="photo-preview${photoData?' visible':''}">
+          ${photoData?`<img src="${photoData}" alt="Progress photo" onclick="openLightbox('${photoKey}')">`:''}</div>
+        ${!isFuture?`<label class="photo-upload-btn" for="file-${day}-${containerId}">${done?'[ REPLACE ]':'[ UPLOAD ]'}</label>
+        <input type="file" id="file-${day}-${containerId}" accept="image/*" data-day="${day}" data-container="${containerId}" data-istoday="${isToday}">`:''}`
+      ;
+      container.appendChild(el);
+      if(!isFuture){
+        el.querySelector('input[type="file"]').addEventListener('change',handlePhotoUpload);
+      }
+    }
+  });
+}
+
+function handlePhotoUpload(e){
+  const file=e.target.files[0];if(!file)return;
+  const day=parseInt(e.target.dataset.day);
+  const containerId=e.target.dataset.container;
+  const isToday=e.target.dataset.istoday==='true';
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    localStorage.setItem('photo_day_'+day,ev.target.result);
+    const s=getState();getDayData(s,day).photo=true;saveState(s);
+    if(isToday){checkCompletionAnimation(s,day);renderAll(s);}
+    else{renderTaskList(s,day,containerId,false);renderGrid(s);renderGallery(s);}
+  };
+  reader.readAsDataURL(file);
+}
+
+// ============================================================
+// WATER METER
+// ============================================================
+function renderWaterMeter(s,day){
+  const dd=getDayData(s,day);
+  const cups=dd.waterCups||0;
+  const isFuture=day>calcCurrentDay();
+  const meter=document.getElementById('water-meter');
+  meter.innerHTML='';
+  const maxH=60;
+  for(let i=0;i<WATER_CUPS;i++){
+    const bar=document.createElement('div');
+    bar.className='water-cup'+(i<cups?' filled':'');
+    bar.style.height=((i+1)/WATER_CUPS*maxH)+'px';
+    bar.title=(i+1)*8+' oz';
+    if(!isFuture){
+      bar.addEventListener('click',()=>{
+        const s2=getState();
+        const d2=getDayData(s2,day);
+        d2.waterCups=(i<d2.waterCups)?i:(i+1);
+        d2.water=(d2.waterCups>=WATER_CUPS);
+        saveState(s2);
+        if(day===calcCurrentDay()){checkCompletionAnimation(s2,day);renderAll(s2);}
+        else{renderWaterMeter(s2,day);renderGrid(s2);}
+      });
+    }
+    meter.appendChild(bar);
+  }
+  document.getElementById('water-oz-total').textContent=cups*8;
+}
+
+// ============================================================
+// METRICS (weight + sleep)
+// ============================================================
+function renderMetricInputs(s,day){
+  const m=s.metrics&&s.metrics[day]||{};
+  if(m.weight)document.getElementById('weight-input').value=m.weight;
+  else document.getElementById('weight-input').value='';
+  if(m.sleep)document.getElementById('sleep-input').value=m.sleep;
+  else document.getElementById('sleep-input').value='';
+}
+function saveMetrics(){
+  const s=getState();const day=calcCurrentDay();
+  if(!s.metrics)s.metrics={};
+  const w=parseFloat(document.getElementById('weight-input').value)||null;
+  const sl=parseFloat(document.getElementById('sleep-input').value)||null;
+  s.metrics[day]={weight:w,sleep:sl};
+  saveState(s);
+  showToast('Metrics saved');
+  renderStats(s);
+}
+
+// ============================================================
+// NOTES
+// ============================================================
+function renderNoteInput(s,day){
+  const note=s.notes&&s.notes[day]||'';
+  document.getElementById('notes-input').value=note;
+}
+function saveNote(){
+  const s=getState();const day=calcCurrentDay();
+  if(!s.notes)s.notes={};
+  s.notes[day]=document.getElementById('notes-input').value;
+  saveState(s);showToast('Note saved');
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+function showToast(msg){
+  let t=document.getElementById('toast');
+  if(!t){t=document.createElement('div');t.id='toast';t.style.cssText='position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border2);color:var(--text2);font-family:var(--font-m);font-size:0.65rem;letter-spacing:0.15em;padding:0.5rem 1.25rem;z-index:400;text-transform:uppercase;transition:opacity 0.3s;';document.body.appendChild(t);}
+  t.textContent=msg;t.style.opacity='1';
+  clearTimeout(t._timer);t._timer=setTimeout(()=>{t.style.opacity='0';},1800);
+}
+
+// ============================================================
+// DRINKS
+// ============================================================
+function renderDrinksLog(s){
+  const c=document.getElementById('drinks-log');c.innerHTML='';
+  const weeks=Object.keys(s.drinks).sort((a,b)=>+a-+b);
+  if(!weeks.length)return;
+  weeks.forEach(w=>{
+    const count=s.drinks[w];const over=count>15;
+    const el=document.createElement('div');
+    el.className='drink-entry'+(over?' warning':'');
+    el.innerHTML=`<span class="drink-week">WK ${String(w).padStart(2,'0')}</span><span class="drink-count${over?' over':''}">${count} drinks${over?' ⚠':''}</span>`;
+    c.appendChild(el);
+  });
+}
+function logDrinks(){
+  const val=parseInt(document.getElementById('drinks-input').value)||0;
+  const week=calcCurrentWeek();
+  const s=getState();s.drinks[week]=Math.max(0,Math.min(50,val));
+  saveState(s);renderDrinksLog(s);showToast('Week '+week+' logged');
+}
+
+// ============================================================
+// GRID
+// ============================================================
+function renderGrid(s){
+  const grid=document.getElementById('day-grid');grid.innerHTML='';
+  const today=calcCurrentDay();
+  for(let d=1;d<=TOTAL;d++){
+    const tile=document.createElement('div');
+    const complete=isDayComplete(s,d);
+    const dd=getDayData(s,d);
+    const any=dd.calorie||dd.w1||dd.w2||dd.read||dd.water||dd.photo;
+    const future=d>today;const isToday=d===today;
+    tile.className='day-tile';
+    if(complete)tile.classList.add('complete');
+    else if(!future&&any)tile.classList.add('partial');
+    if(future)tile.classList.add('future');
+    if(isToday)tile.classList.add('today');
+    const emoji=complete?'✅':(!future&&any?'🟡':'⬜');
+    tile.innerHTML=`<span class="tile-num">${d}</span><span class="tile-emoji">${emoji}</span>`;
+    if(!future)tile.addEventListener('click',()=>openModal(d));
+    grid.appendChild(tile);
+  }
+}
+
+// ============================================================
+// STATS
+// ============================================================
+function renderStats(s){
+  const today=calcCurrentDay();
+  const done=countCompleteDays(s);
+  const streak=calcStreak(s);
+  const pct=Math.round((done/TOTAL)*100);
+
+  // Miss rates
+  const taskKeys=['calorie','w1','w2','read','water','photo'];
+  const taskNames=['Calorie','WO1','WO2','Read','Water','Photo'];
+  let missCount={};taskKeys.forEach(k=>missCount[k]=0);
+  for(let d=1;d<=today;d++){
+    const dd=getDayData(s,d);
+    taskKeys.forEach(k=>{if(!dd[k])missCount[k]++;});
+  }
+  const mostMissed=taskKeys.reduce((a,b)=>missCount[a]>missCount[b]?a:b);
+  const missIdx=taskKeys.indexOf(mostMissed);
+
+  // Avg weight & sleep
+  let weights=[],sleeps=[];
+  for(let d=1;d<=today;d++){
+    const m=s.metrics&&s.metrics[d];
+    if(m){if(m.weight)weights.push(m.weight);if(m.sleep)sleeps.push(m.sleep);}
+  }
+  const avgW=weights.length?Math.round(weights.reduce((a,b)=>a+b,0)/weights.length*10)/10:null;
+  const avgS=sleeps.length?Math.round(sleeps.reduce((a,b)=>a+b,0)/sleeps.length*10)/10:null;
+
+  const grid=document.getElementById('stats-grid');
+  grid.innerHTML=`
+    <div class="stat-card"><div class="stat-card-val">${streak}</div><div class="stat-card-lbl">Current Streak</div></div>
+    <div class="stat-card green"><div class="stat-card-val">${done}</div><div class="stat-card-lbl">Days Complete</div></div>
+    <div class="stat-card gold"><div class="stat-card-val">${pct}%</div><div class="stat-card-lbl">Progress</div></div>
+    <div class="stat-card blue"><div class="stat-card-val">${today}</div><div class="stat-card-lbl">Days In</div></div>
+    <div class="stat-card purple"><div class="stat-card-val">${avgW||'—'}</div><div class="stat-card-lbl">Avg Weight (lbs)</div></div>
+    <div class="stat-card" style="border-left-color:var(--blue)"><div class="stat-card-val">${avgS||'—'}</div><div class="stat-card-lbl">Avg Sleep (hrs)</div></div>
+    <div class="stat-card" style="border-left-color:var(--red);grid-column:1/-1"><div class="stat-card-val" style="font-size:1.2rem;">${taskNames[missIdx]}</div><div class="stat-card-lbl">Most Missed Task (${missCount[mostMissed]} times)</div></div>
+  `;
+
+  // Weekly completion chart
+  renderBarChart('completion-chart', buildWeeklyCompletionData(s), '#ff3c00', v=>`${v}%`);
+  // Weight chart
+  renderBarChart('weight-chart', buildMetricData(s,'weight'), '#f5c400', v=>`${v}`);
+  // Sleep chart
+  renderBarChart('sleep-chart', buildMetricData(s,'sleep'), '#d500f9', v=>`${v}h`);
+}
+
+function buildWeeklyCompletionData(s){
+  const today=calcCurrentDay();
+  const weeks=Math.ceil(today/7);
+  const data=[];
+  for(let w=1;w<=weeks;w++){
+    let complete=0,total=0;
+    for(let d=(w-1)*7+1;d<=Math.min(w*7,today);d++){total++;if(isDayComplete(s,d))complete++;}
+    data.push({label:'W'+w,value:total>0?Math.round(complete/total*100):0});
+  }
+  return data;
+}
+
+function buildMetricData(s,key){
+  const today=calcCurrentDay();const data=[];
+  for(let d=1;d<=today;d++){
+    const m=s.metrics&&s.metrics[d];
+    if(m&&m[key])data.push({label:'D'+d,value:m[key]});
+  }
+  return data;
+}
+
+function renderBarChart(containerId,data,color,tipFn){
+  const c=document.getElementById(containerId);c.innerHTML='';
+  if(!data.length){c.innerHTML='<div style="font-family:var(--font-m);font-size:0.6rem;color:var(--text3);letter-spacing:0.1em;">No data yet</div>';return;}
+  const max=Math.max(...data.map(d=>d.value),1);
+  data.forEach(d=>{
+    const bar=document.createElement('div');
+    bar.className='chart-bar';
+    const h=Math.max(2,Math.round((d.value/max)*80));
+    bar.style.height=h+'px';
+    bar.style.background=color;
+    bar.style.opacity='0.7';
+    bar.setAttribute('data-tip',d.label+': '+tipFn(d.value));
+    c.appendChild(bar);
+  });
+}
+
+// ============================================================
+// GALLERY
+// ============================================================
+function renderGallery(s){
+  const grid=document.getElementById('gallery-grid');grid.innerHTML='';
+  const today=calcCurrentDay();
+  let hasAny=false;
+  const selectA=document.getElementById('compare-a');
+  const selectB=document.getElementById('compare-b');
+  const prevA=selectA.value,prevB=selectB.value;
+  selectA.innerHTML='<option value="">Day A</option>';
+  selectB.innerHTML='<option value="">Day B</option>';
+
+  for(let d=1;d<=today;d++){
+    const photo=localStorage.getItem('photo_day_'+d);
+    if(photo){
+      hasAny=true;
+      const item=document.createElement('div');
+      item.className='gallery-item';
+      item.innerHTML=`<img src="${photo}" alt="Day ${d}"><div class="gallery-day">DAY ${d}</div>`;
+      item.addEventListener('click',()=>openLightbox('photo_day_'+d));
+      grid.appendChild(item);
+      selectA.innerHTML+=`<option value="${d}">Day ${d}</option>`;
+      selectB.innerHTML+=`<option value="${d}">Day ${d}</option>`;
+    }
+  }
+  if(!hasAny)grid.innerHTML='<div class="gallery-empty">// No photos uploaded yet —<br>upload progress photos daily</div>';
+  selectA.value=prevA;selectB.value=prevB;
+  renderCompare();
+}
+
+function renderCompare(){
+  const a=document.getElementById('compare-a').value;
+  const b=document.getElementById('compare-b').value;
+  const wrap=document.getElementById('compare-wrap');
+  const slotHtml=(d)=>{
+    if(!d)return`<div class="compare-slot"><div class="compare-empty">Select a day</div></div>`;
+    const photo=localStorage.getItem('photo_day_'+d);
+    if(!photo)return`<div class="compare-slot"><div class="compare-empty">No photo</div></div>`;
+    return`<div class="compare-slot"><img src="${photo}" alt="Day ${d}"><div class="compare-label">DAY ${d}</div></div>`;
+  };
+  wrap.innerHTML=slotHtml(a)+slotHtml(b);
+}
+
+function openLightbox(key){
+  const photo=localStorage.getItem(key);if(!photo)return;
+  document.getElementById('lightbox-img').src=photo;
+  document.getElementById('lightbox').classList.add('open');
+}
+function closeLightbox(){document.getElementById('lightbox').classList.remove('open');}
+
+// ============================================================
+// BOOKS
+// ============================================================
+function renderBooks(s){
+  const today=calcCurrentDay();
+  let total=0;
+  const log=document.getElementById('book-log');log.innerHTML='';
+
+  // Current book prefill
+  const lastEntry=Object.keys(s.books||{}).sort((a,b)=>+b-+a)[0];
+  if(lastEntry&&s.books[lastEntry]){
+    const last=s.books[lastEntry];
+    if(last.title)document.getElementById('book-title-input').value=last.title;
+  }
+
+  // Build log + total
+  const entries=Object.keys(s.books||{}).sort((a,b)=>+a-+b);
+  entries.forEach(d=>{
+    const e=s.books[d];if(!e)return;
+    total+=e.pages||0;
+    const el=document.createElement('div');
+    el.style.cssText='background:var(--bg3);border:1px solid var(--border);border-left:3px solid var(--purple);padding:0.6rem 0.75rem;margin-bottom:0.4rem;display:flex;justify-content:space-between;align-items:center;';
+    el.innerHTML=`<div><div style="font-family:var(--font-b);font-size:0.8rem;color:var(--text);">${e.title||'(No title)'}</div><div style="font-family:var(--font-m);font-size:0.55rem;color:var(--text3);letter-spacing:0.1em;margin-top:2px;">DAY ${d}</div></div><div style="font-family:var(--font-d);font-size:1.2rem;color:var(--purple);">${e.pages}p</div>`;
+    log.appendChild(el);
+  });
+  document.getElementById('total-pages-read').textContent=total;
+}
+
+function saveBookEntry(){
+  const s=getState();const day=calcCurrentDay();
+  if(!s.books)s.books={};
+  const title=document.getElementById('book-title-input').value.trim();
+  const pages=parseInt(document.getElementById('book-pages-input').value)||0;
+  s.books[day]={title,pages};
+  saveState(s);renderBooks(s);showToast('Book entry saved');
+}
+
+// ============================================================
+// MODAL
+// ============================================================
+function openModal(day){
+  const s=getState();
+  const date=getDateForDay(day);
+  document.getElementById('modal-title').textContent='DAY '+day;
+  document.getElementById('modal-date').textContent=formatDate(date).toUpperCase();
+  renderTaskList(s,day,'modal-task-list',day===calcCurrentDay());
+  const note=s.notes&&s.notes[day]||'';
+  document.getElementById('modal-note-wrap').style.display=note?'block':'none';
+  document.getElementById('modal-note-text').textContent=note;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal(e){if(e.target===document.getElementById('modal-overlay'))closeModalDirect();}
+function closeModalDirect(){
+  document.getElementById('modal-overlay').classList.remove('open');
+  const s=getState();renderAll(s);
+}
+
+// ============================================================
+// COMPLETION ANIMATION
+// ============================================================
+let lastAnimatedDay=null;
+function checkCompletionAnimation(s,day){
+  if(isDayComplete(s,day)&&lastAnimatedDay!==day){lastAnimatedDay=day;fireConfetti();}
+}
+function fireConfetti(){
+  const c=document.getElementById('confetti-container');c.innerHTML='';c.classList.add('active');
+  const colors=['#ff3c00','#f5c400','#00e676','#00b0ff','#ff1744','#ffffff','#d500f9'];
+  for(let i=0;i<100;i++){
+    const p=document.createElement('div');p.className='confetti-piece';
+    p.style.left=Math.random()*100+'vw';
+    p.style.background=colors[Math.floor(Math.random()*colors.length)];
+    p.style.animationDuration=(1.5+Math.random()*2)+'s';
+    p.style.animationDelay=(Math.random()*0.6)+'s';
+    p.style.width=(6+Math.random()*8)+'px';p.style.height=(6+Math.random()*8)+'px';
+    c.appendChild(p);
+  }
+  setTimeout(()=>{c.classList.remove('active');c.innerHTML='';},3500);
+}
+
+// ============================================================
+// EXPORT
+// ============================================================
+function exportData(){
+  const s=getState();if(!s){alert('No data to export.');return;}
+  const blob=new Blob([JSON.stringify(s,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='75hard-backup.json';
+  document.body.appendChild(a);a.click();
+  document.body.removeChild(a);URL.revokeObjectURL(url);
+  showToast('Data exported');
+}
+
+// ============================================================
+// RESET
+// ============================================================
+function confirmReset(){document.getElementById('confirm-overlay').classList.add('open');}
+function cancelReset(){document.getElementById('confirm-overlay').classList.remove('open');}
+function executeReset(){
+  localStorage.removeItem('75hard_v2');
+  for(let d=1;d<=TOTAL;d++)localStorage.removeItem('photo_day_'+d);
+  document.getElementById('confirm-overlay').classList.remove('open');
+  document.getElementById('app').style.display='none';
+  document.getElementById('setup-screen').classList.add('active');
+  if(countdownInterval)clearInterval(countdownInterval);
+  if(quoteInterval)clearInterval(quoteInterval);
+  lastAnimatedDay=null;
+}
+
+// ============================================================
+// BOOT
+// ============================================================
+boot();
+</script>
+</body>
+</html>
