@@ -30,6 +30,8 @@ export default [
         btoa: 'readonly',
         TextEncoder: 'readonly',
         TextDecoder: 'readonly',
+        // Notifications API (js/notifications.js)
+        Notification: 'readonly',
         // Timers
         setTimeout: 'readonly',
         clearTimeout: 'readonly',

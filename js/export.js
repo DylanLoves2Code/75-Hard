@@ -16,6 +16,37 @@ import { stopQuoteRotation } from './quotes.js';
 import { resetAnimatedDay } from './confetti.js';
 import { getSettings } from './settings.js';
 import { emit } from './bus.js';
+import { buildIcs } from './ics.js';
+
+/**
+ * Build the 150-event .ics calendar from the current state + user
+ * workout-time settings and trigger a download. No-op when no state
+ * is saved yet (the user must complete setup first).
+ * @returns {void}
+ */
+export function exportIcs(){
+  const s = getState();
+  if(!s){ alert('No data to export.'); return; }
+  const settings = getSettings();
+  let ics;
+  try {
+    ics = buildIcs(s, {
+      workout1Time: settings.icsWorkout1Time,
+      workout2Time: settings.icsWorkout2Time,
+    });
+  } catch(err){
+    console.warn('[ics] build failed', err);
+    showToast('Calendar export failed');
+    return;
+  }
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = '75hard-calendar.ics';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+  showToast('Calendar exported');
+}
 
 /** Trigger a JSON download of the current saved state. @returns {void} */
 export function exportData(){

@@ -512,7 +512,10 @@ test('v4: migrate adds measurements / wellbeing / workout-type-location / failur
   assert.equal(state.days[1].w1outdoor, true);
 });
 
-test('v4: migrate is idempotent — a v4 state walks through unchanged', () => {
+test('v4: migrate is idempotent at v4 only when CURRENT == 4 — at v5+ it advances', () => {
+  // Same pattern as the v3 idempotency test: once CURRENT_SCHEMA_VERSION
+  // advanced past 4, a v4 blob walks forward (currently to v5 for
+  // workout-timer durations). Existing v4 fields must remain intact.
   const raw = {
     version: 4,
     startDate: '2025-01-01',
@@ -531,7 +534,7 @@ test('v4: migrate is idempotent — a v4 state walks through unchanged', () => {
     drinks: {}, books: {}, metrics: {}, notes: {},
   };
   const { state, migrated } = migrate(raw);
-  assert.equal(migrated, false);
+  assert.equal(migrated, true);
   assert.equal(state.version, CURRENT_SCHEMA_VERSION);
   assert.deepEqual(state.days[1].measurements, {waist: 34.5, chest: 41.0});
   assert.equal(state.days[1].wellbeing.mood, 4);
@@ -570,6 +573,62 @@ test('v4: defaultState exposes the v4 per-day defaults via getDayData', () => {
   assert.equal(dd.w1type, '');
   assert.equal(dd.w2location, '');
   assert.equal(dd.failureReason, null);
+});
+
+// --- v5 schema migration ---------------------------------------------------
+
+test('v5: migrate adds w1duration / w2duration defaults to existing days', () => {
+  const raw = {
+    version: 4,
+    startDate: '2025-01-01',
+    name: 'X',
+    diet: { name: 'Custom', customText: 'OMAD' },
+    days: { 1: { dietAdherence: true, w1: true } },
+    drinks: {}, books: {}, metrics: {}, notes: {},
+  };
+  const { state, migrated } = migrate(raw);
+  assert.equal(migrated, true);
+  assert.equal(state.version, CURRENT_SCHEMA_VERSION);
+  assert.equal(state.days[1].w1duration, 0);
+  assert.equal(state.days[1].w2duration, 0);
+  // v4 fields are untouched.
+  assert.equal(state.days[1].dietAdherence, true);
+});
+
+test('v5: migrate preserves existing duration values', () => {
+  const raw = {
+    version: 4,
+    startDate: '2025-01-01',
+    name: 'X',
+    diet: { name: 'Custom', customText: '' },
+    days: { 1: { w1duration: 2700, w2duration: 1800 } },
+    drinks: {}, books: {}, metrics: {}, notes: {},
+  };
+  const { state } = migrate(raw);
+  assert.equal(state.days[1].w1duration, 2700);
+  assert.equal(state.days[1].w2duration, 1800);
+});
+
+test('v5: defaultState exposes the v5 per-day duration defaults via getDayData', () => {
+  const s = defaultState('2025-01-01', 'X');
+  const dd = getDayData(s, 3);
+  assert.equal(dd.w1duration, 0);
+  assert.equal(dd.w2duration, 0);
+});
+
+test('v5: migrate is idempotent at v5 (no advance once at current)', () => {
+  const raw = {
+    version: 5,
+    startDate: '2025-01-01',
+    name: 'X',
+    diet: { name: 'Custom', customText: '' },
+    days: { 1: { w1duration: 60, w2duration: 0 } },
+    drinks: {}, books: {}, metrics: {}, notes: {},
+  };
+  const { state, migrated } = migrate(raw);
+  assert.equal(migrated, false);
+  assert.equal(state.version, CURRENT_SCHEMA_VERSION);
+  assert.equal(state.days[1].w1duration, 60);
 });
 
 // --- storage usage ---------------------------------------------------------

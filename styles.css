@@ -559,3 +559,36 @@ body.report-mode #report-view{display:block;}
 .fl-day{color:var(--red);font-family:var(--font-d);font-size:0.9rem;letter-spacing:0.08em;flex-shrink:0;}
 .fl-reason{color:var(--text2);letter-spacing:0.05em;line-height:1.5;}
 
+
+/* ------------------------------------------------------------------------- */
+/* w4b: workout-timer button on w1/w2 task rows                              */
+/* ------------------------------------------------------------------------- */
+.btn-workout-timer{margin-left:0.35rem;background:transparent;border:1px solid var(--border2);color:var(--text3);font-family:var(--font-m);font-size:0.55rem;letter-spacing:0.12em;padding:0.25rem 0.55rem;cursor:pointer;text-transform:uppercase;transition:all 0.2s;flex-shrink:0;}
+.btn-workout-timer:hover{border-color:var(--gold);color:var(--gold);}
+.btn-workout-timer.running{border-color:var(--gold);color:var(--gold);background:rgba(245,196,0,0.08);}
+
+/* ------------------------------------------------------------------------- */
+/* w4b: streak-at-risk urgent banner                                         */
+/* ------------------------------------------------------------------------- */
+.urgent-banner{display:none;background:linear-gradient(135deg,rgba(255,23,68,0.12),rgba(255,23,68,0.04));border:1px solid var(--red);border-left:4px solid var(--red);padding:0.9rem 1.25rem;margin:0 1.25rem 1.25rem;align-items:flex-start;gap:0.9rem;animation:slideIn 0.4s ease;}
+.urgent-banner.visible{display:flex;}
+.urgent-icon{font-size:1.6rem;color:var(--red);animation:urgentPulse 1.6s ease-in-out infinite;flex-shrink:0;}
+.urgent-text{display:flex;flex-direction:column;gap:0.4rem;flex:1;min-width:0;}
+.urgent-title{font-family:var(--font-d);font-size:1.1rem;letter-spacing:0.08em;color:var(--red);}
+.urgent-sub{font-family:var(--font-m);font-size:0.75rem;letter-spacing:0.04em;color:var(--red);}
+.urgent-chips{display:flex;flex-wrap:wrap;gap:0.35rem;margin-top:0.15rem;}
+.urgent-chip{font-family:var(--font-m);font-size:0.55rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--red);border:1px solid var(--red);padding:0.2rem 0.5rem;background:rgba(255,23,68,0.06);}
+@keyframes urgentPulse{
+  0%,100%{transform:scale(1);opacity:1;}
+  50%{transform:scale(1.15);opacity:0.7;}
+}
+.force-reduced-motion .urgent-icon{animation:none;}
+
+/* ------------------------------------------------------------------------- */
+/* w4b: settings panel — reminders + section dividers                        */
+/* ------------------------------------------------------------------------- */
+.settings-section-divider{font-family:var(--font-m);font-size:0.6rem;color:var(--text3);letter-spacing:0.2em;text-transform:uppercase;padding:0.5rem 0 0.1rem;border-top:1px solid var(--border);margin-top:0.4rem;}
+.settings-notif-row{display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;}
+.settings-notif-row .btn-sm{flex:0 0 auto;}
+.settings-notif-row .settings-hint[data-perm="granted"]{color:var(--green);}
+.settings-notif-row .settings-hint[data-perm="denied"]{color:var(--red);}
