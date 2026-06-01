@@ -1,5 +1,5 @@
 import { WATER_CUPS } from './constants.js';
-import { getState, saveState, getDayData, calcCurrentDay } from './state.js';
+import { getState, saveState, getDayData, updateDayData, calcCurrentDay } from './state.js';
 import { checkCompletionAnimation } from './confetti.js';
 import { renderGrid } from './grid.js';
 import { renderAll } from './main.js';
@@ -20,8 +20,8 @@ export function renderWaterMeter(s,day){
       bar.addEventListener('click',()=>{
         const s2=getState();
         const d2=getDayData(s2,day);
-        d2.waterCups=(i<d2.waterCups)?i:(i+1);
-        d2.water=(d2.waterCups>=WATER_CUPS);
+        const newCups=(i<d2.waterCups)?i:(i+1);
+        updateDayData(s2,day,{waterCups:newCups,water:newCups>=WATER_CUPS});
         saveState(s2);
         if(day===calcCurrentDay()){checkCompletionAnimation(s2,day);renderAll(s2);}
         else{renderWaterMeter(s2,day);renderGrid(s2);}

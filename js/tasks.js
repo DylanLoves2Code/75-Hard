@@ -1,5 +1,5 @@
 import { TASKS, photoKey } from './constants.js';
-import { getState, saveState, getDayData, calcCurrentDay } from './state.js';
+import { getState, saveState, getDayData, updateDayData, calcCurrentDay } from './state.js';
 import { checkCompletionAnimation } from './confetti.js';
 import { renderGrid } from './grid.js';
 import { renderGallery, openLightbox } from './photos.js';
@@ -29,7 +29,7 @@ export function renderTaskList(s,day,containerId,isToday){
         el.addEventListener('click',()=>{
           const s2=getState();
           const d2=getDayData(s2,day);
-          d2[t.key]=!d2[t.key];
+          updateDayData(s2,day,{[t.key]:!d2[t.key]});
           saveState(s2);
           if(isToday){checkCompletionAnimation(s2,day);renderAll(s2);}
           else{renderTaskList(s2,day,containerId,false);renderGrid(s2);}
@@ -39,7 +39,7 @@ export function renderTaskList(s,day,containerId,isToday){
             e.preventDefault();
             const newName=prompt('Rename this workout:',dd[t.key+'label']||t.label);
             if(newName){
-              const s2=getState();getDayData(s2,day)[t.key+'label']=newName.trim();
+              const s2=getState();updateDayData(s2,day,{[t.key+'label']:newName.trim()});
               saveState(s2);renderAll(s2);
             }
           });
@@ -82,7 +82,7 @@ export function handlePhotoUpload(e){
   const reader=new FileReader();
   reader.onload=ev=>{
     localStorage.setItem(photoKey(day),ev.target.result);
-    const s=getState();getDayData(s,day).photo=true;saveState(s);
+    const s=getState();updateDayData(s,day,{photo:true});saveState(s);
     if(isToday){checkCompletionAnimation(s,day);renderAll(s);}
     else{renderTaskList(s,day,containerId,false);renderGrid(s);renderGallery(s);}
   };

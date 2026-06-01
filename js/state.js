@@ -1,13 +1,17 @@
 import { TOTAL, STORAGE_KEY } from './constants.js';
 
+const DAY_DEFAULTS=Object.freeze({calorie:false,w1:false,w2:false,read:false,water:false,photo:false,w1label:'Workout 1',w2label:'Workout 2',waterCups:0});
+
 export function getState(){return JSON.parse(localStorage.getItem(STORAGE_KEY)||'null');}
 export function saveState(s){localStorage.setItem(STORAGE_KEY,JSON.stringify(s));}
 export function defaultState(start,name){
   return {startDate:start,name:name||'',days:{},drinks:{},books:{},metrics:{},notes:{}};
 }
 export function getDayData(s,d){
-  if(!s.days[d])s.days[d]={calorie:false,w1:false,w2:false,read:false,water:false,photo:false,w1label:'Workout 1',w2label:'Workout 2',waterCups:0};
-  if(s.days[d].waterCups===undefined)s.days[d].waterCups=0;
+  return s.days[d]?{...DAY_DEFAULTS,...s.days[d]}:{...DAY_DEFAULTS};
+}
+export function updateDayData(s,d,patch){
+  s.days[d]={...getDayData(s,d),...patch};
   return s.days[d];
 }
 export function isDayComplete(s,d){
