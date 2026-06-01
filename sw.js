@@ -1,6 +1,9 @@
 // 75 Hard — Service Worker
 // Versioned cache for the static app shell. Bump CACHE_VERSION to invalidate.
-const CACHE_VERSION = 'v1';
+// v2: precache the v4 tracking modules (measurements, wellbeing, failure)
+// plus the previously-omitted bus/settings/report modules so offline
+// reloads after the v4 ship don't miss any code.
+const CACHE_VERSION = 'v2';
 const CACHE_NAME = `75hard-${CACHE_VERSION}`;
 const CACHE_PREFIX = '75hard-';
 
@@ -31,6 +34,12 @@ const PRECACHE_URLS = [
   './js/export.js',
   './js/confetti.js',
   './js/toast.js',
+  './js/bus.js',
+  './js/settings.js',
+  './js/report.js',
+  './js/measurements.js',
+  './js/wellbeing.js',
+  './js/failure.js',
 ];
 
 self.addEventListener('install', (event) => {

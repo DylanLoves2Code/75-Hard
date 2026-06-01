@@ -6,6 +6,24 @@ import { renderGrid } from './grid.js';
 import { renderGallery, openLightbox } from './photos.js';
 import { emit } from './bus.js';
 
+/** v4: dropdown options for the per-workout type + location selects. */
+const WORKOUT_TYPES = ['Lift','Run','Swim','Bike','Yoga','HIIT','Walk','Sport','Other'];
+const WORKOUT_LOCATIONS = ['Gym','Home','Outdoor','Park','Road','Other'];
+
+/**
+ * Build the inner `<option>` markup for a `<select>`, with the current
+ * value pre-selected and a leading "—" empty option.
+ * @param {string[]} options
+ * @param {string} current
+ * @returns {string}
+ */
+function selectOptions(options, current){
+  const cur = current || '';
+  const empty = `<option value=""${cur===''?' selected':''}>—</option>`;
+  const opts = options.map(o => `<option value="${o}"${o===cur?' selected':''}>${o}</option>`).join('');
+  return empty + opts;
+}
+
 /**
  * Resolve the user-facing diet name from state.diet. 'Custom' falls back
  * to the user's free-text label, or '' if neither is set.
@@ -48,21 +66,37 @@ export function renderTaskList(s,day,containerId,isToday){
       }
       const showEdit=t.customLabel&&isToday&&!isFuture;
       const showOutdoor=t.customLabel&&!isFuture; // w1/w2 outdoor toggle
-      // Rows that host an interactive EDIT/OUTDOOR child must remain a div
-      // (nested <button> inside <button> is invalid HTML). Otherwise
-      // promote to a real <button> for native a11y semantics.
-      const useButton=!(showEdit||showOutdoor);
+      // v4: workout-type + location selects, only on the w1/w2 rows.
+      const showSelects=t.customLabel&&!isFuture;
+      // Rows that host an interactive EDIT/OUTDOOR/SELECT child must remain a div
+      // (nested <button> inside <button> is invalid HTML, and a <select>
+      // would also break the row click target). Otherwise promote to a
+      // real <button> for native a11y semantics.
+      const useButton=!(showEdit||showOutdoor||showSelects);
       const el=document.createElement(useButton?'button':'div');
       if(useButton)el.type='button';
-      el.className='task-item'+(done?' done':'');
+      el.className='task-item'+(done?' done':'')+(showSelects?' task-item-workout':'');
       const outdoorKey=t.key+'outdoor';
       const outdoorOn=showOutdoor?!!dd[outdoorKey]:false;
+      const typeKey=t.key+'type';
+      const locKey=t.key+'location';
+      const curType=showSelects?(dd[typeKey]||''):'';
+      const curLoc=showSelects?(dd[locKey]||''):'';
       el.innerHTML=`
-        <div class="task-check"><svg class="task-check-icon" width="12" height="10" viewBox="0 0 12 10"><path d="M1 5L4.5 8.5L11 1.5" stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round" fill="none"/></svg></div>
-        <span class="task-icon">${t.icon}</span>
-        <span class="task-label">${labelText}</span>
-        ${showOutdoor?`<button type="button" class="btn-outdoor-toggle${outdoorOn?' on':''}" aria-label="Toggle outdoor for ${labelText}" aria-pressed="${outdoorOn?'true':'false'}">[ OUTDOOR ]</button>`:''}
-        ${showEdit?`<button type="button" class="btn-edit-label" aria-label="Rename ${t.label}">[ EDIT ]</button>`:''}
+        <div class="task-row-main">
+          <div class="task-check"><svg class="task-check-icon" width="12" height="10" viewBox="0 0 12 10"><path d="M1 5L4.5 8.5L11 1.5" stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round" fill="none"/></svg></div>
+          <span class="task-icon">${t.icon}</span>
+          <span class="task-label">${labelText}</span>
+          ${showOutdoor?`<button type="button" class="btn-outdoor-toggle${outdoorOn?' on':''}" aria-label="Toggle outdoor for ${labelText}" aria-pressed="${outdoorOn?'true':'false'}">[ OUTDOOR ]</button>`:''}
+          ${showEdit?`<button type="button" class="btn-edit-label" aria-label="Rename ${t.label}">[ EDIT ]</button>`:''}
+        </div>
+        ${showSelects?`
+        <div class="task-row-selects">
+          <select class="task-select task-select-type" data-tkey="${typeKey}"
+                  aria-label="${labelText} type">${selectOptions(WORKOUT_TYPES,curType)}</select>
+          <select class="task-select task-select-loc" data-tkey="${locKey}" data-outdoor-key="${outdoorKey}"
+                  aria-label="${labelText} location">${selectOptions(WORKOUT_LOCATIONS,curLoc)}</select>
+        </div>`:''}
       `;
       el.setAttribute('aria-pressed',done?'true':'false');
       el.setAttribute('aria-label',labelText);
@@ -91,6 +125,9 @@ export function renderTaskList(s,day,containerId,isToday){
           if(e.target.closest('.btn-edit-label'))return;
           if(e.target.closest('.btn-outdoor-toggle'))return;
           if(e.target.closest('.task-label-input'))return;
+          // v4: type + location selects must not toggle the task.
+          if(e.target.closest('.task-select'))return;
+          if(e.target.closest('.task-row-selects'))return;
           activate();
         });
         if(!useButton){
@@ -121,6 +158,29 @@ export function renderTaskList(s,day,containerId,isToday){
             saveState(s2);
             if(isToday){emit('state:changed',s2);}
             else{renderTaskList(s2,day,containerId,false);renderGrid(s2);}
+          });
+        }
+        if(showSelects){
+          el.querySelectorAll('.task-select').forEach(sel=>{
+            // Stop click/change from bubbling to the row activator.
+            sel.addEventListener('click',e=>e.stopPropagation());
+            sel.addEventListener('change',e=>{
+              e.stopPropagation();
+              const s2=getState();
+              const fieldKey=sel.dataset.tkey;
+              const patch={[fieldKey]:sel.value};
+              // location === 'Outdoor' implies the existing v3 outdoor
+              // flag. Linking these makes Stats' outdoor counts honest
+              // without forcing the user to toggle two controls.
+              const outKey=sel.dataset.outdoorKey;
+              if(outKey){
+                if(sel.value==='Outdoor')patch[outKey]=true;
+              }
+              updateDayData(s2,day,patch);
+              saveState(s2);
+              if(isToday){emit('state:changed',s2);}
+              else{renderTaskList(s2,day,containerId,false);renderGrid(s2);}
+            });
           });
         }
       } else {

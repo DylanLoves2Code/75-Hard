@@ -42,6 +42,20 @@ import { showToast } from './toast.js';
  * @property {number}  waterCups       Number of 8 oz cups marked filled (0..WATER_CUPS).
  *                                     Older saved states predate this field and merge
  *                                     to 0 via DAY_DEFAULTS.
+ * @property {Object}  [measurements]  v4+ optional body measurements (in inches). Any of
+ *                                     `waist`, `chest`, `hips`, `arms`, `thighs`, `neck`
+ *                                     may be set when the user logged that metric. Missing
+ *                                     fields mean "not entered for this day".
+ * @property {{mood:?number,energy:?number,discipline:?number}} [wellbeing]
+ *                                     v4+ 1-5 self-ratings. `null` means "not entered".
+ * @property {string}  [w1type]        v4+ workout-1 type (e.g. "Lift", "Run"). Empty = unset.
+ * @property {string}  [w1location]    v4+ workout-1 location (e.g. "Gym", "Outdoor"). Empty = unset.
+ *                                     When set to 'Outdoor', also implies `w1outdoor:true`.
+ * @property {string}  [w2type]        v4+ workout-2 type. Empty = unset.
+ * @property {string}  [w2location]    v4+ workout-2 location. Empty = unset.
+ * @property {?string} [failureReason] v4+ user-entered reason for an incomplete day, captured
+ *                                     by the morning failure-log prompt. `null` = never asked,
+ *                                     `''` = asked + skipped, non-empty string = logged.
  */
 
 /**
@@ -63,13 +77,24 @@ import { showToast } from './toast.js';
  * @property {Object<string,string>} notes            Daily field notes (free text).
  */
 
-const DAY_DEFAULTS=Object.freeze({calorie:false,dietAdherence:false,dietNote:'',w1:false,w2:false,w1outdoor:false,w2outdoor:false,read:false,water:false,photo:false,w1label:'Workout 1',w2label:'Workout 2',waterCups:0});
+const DAY_DEFAULTS=Object.freeze({
+  calorie:false,dietAdherence:false,dietNote:'',
+  w1:false,w2:false,w1outdoor:false,w2outdoor:false,
+  read:false,water:false,photo:false,
+  w1label:'Workout 1',w2label:'Workout 2',waterCups:0,
+  // v4+ deeper-tracking fields. Defaults are intentionally "empty"
+  // representations (not null) so the UI never blows up on read.
+  measurements:Object.freeze({}),
+  wellbeing:Object.freeze({mood:null,energy:null,discipline:null}),
+  w1type:'',w1location:'',w2type:'',w2location:'',
+  failureReason:null,
+});
 
 /**
  * The schema version this build of the app writes. Bumped whenever the
  * shape of stored state changes; {@link migrate} handles upgrades.
  */
-export const CURRENT_SCHEMA_VERSION = 3;
+export const CURRENT_SCHEMA_VERSION = 4;
 
 /**
  * Parse a "YYYY-MM-DD" string as a Date at LOCAL midnight (not UTC).
@@ -155,6 +180,38 @@ const MIGRATIONS=[
         }
       }
       s.version=3;
+    },
+  },
+  {
+    from:3,to:4,
+    run:(s)=>{
+      // v4: deeper tracking pass.
+      //   - Adds per-day `measurements` ({waist,chest,hips,arms,thighs,neck})
+      //     stored only for fields the user actually entered. Defaults to {}.
+      //   - Adds per-day `wellbeing` ({mood,energy,discipline}), each 1-5 or
+      //     null. All null means "not logged".
+      //   - Adds per-day workout type/location strings:
+      //     `w1type`, `w1location`, `w2type`, `w2location`. Empty string
+      //     means "not chosen yet". `location === 'Outdoor'` implies the
+      //     existing v3 `w?outdoor` flag.
+      //   - Adds per-day `failureReason` (string|null). `null` = the user
+      //     was never asked yet for that day; `''` = asked + skipped;
+      //     non-empty = logged. Lets the boot-time prompt remember its
+      //     "don't ask twice" state.
+      if(s.days&&typeof s.days==='object'){
+        for(const k in s.days){
+          const dd=s.days[k];
+          if(!dd||typeof dd!=='object')continue;
+          if(dd.measurements===undefined)dd.measurements={};
+          if(dd.wellbeing===undefined)dd.wellbeing={mood:null,energy:null,discipline:null};
+          if(dd.w1type===undefined)dd.w1type='';
+          if(dd.w1location===undefined)dd.w1location='';
+          if(dd.w2type===undefined)dd.w2type='';
+          if(dd.w2location===undefined)dd.w2location='';
+          if(dd.failureReason===undefined)dd.failureReason=null;
+        }
+      }
+      s.version=4;
     },
   },
 ];

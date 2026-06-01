@@ -16,6 +16,9 @@ import { renderTaskList } from './tasks.js';
 import { renderWaterMeter } from './water.js';
 import { renderMetricInputs, saveMetrics } from './metrics.js';
 import { renderNoteInput, saveNote } from './notes.js';
+import { renderMeasurements } from './measurements.js';
+import { renderWellbeingInputs } from './wellbeing.js';
+import { maybeShowFailurePrompt } from './failure.js';
 import { renderGrid } from './grid.js';
 import { renderStats } from './stats.js';
 import { renderGallery, renderCompare, closeLightbox } from './photos.js';
@@ -65,6 +68,8 @@ export function renderAll(s){
   renderWaterMeter(s,day);
   renderMetricInputs(s,day);
   renderNoteInput(s,day);
+  renderMeasurements(s,day);
+  renderWellbeingInputs(s,day);
 
   const banner=document.getElementById('complete-banner');
   const complete=isDayComplete(s,day);
@@ -165,6 +170,8 @@ function boot(){
     startCountdown(s);
     startQuoteRotation(s);
     checkStorageUsage();
+    // v4: one-time end-of-day failure-log prompt for yesterday, if incomplete.
+    maybeShowFailurePrompt(s);
   }
 }
 
@@ -245,6 +252,8 @@ function wireBus(){
     renderWaterMeter(s, day);
     renderMetricInputs(s, day);
     renderNoteInput(s, day);
+    renderMeasurements(s, day);
+    renderWellbeingInputs(s, day);
   });
   on('state:grid', renderGrid);
   on('state:stats', renderStats);

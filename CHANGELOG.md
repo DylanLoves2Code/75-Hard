@@ -6,6 +6,26 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Wave 4C deeper tracking (schema v4):
+  - Body measurements log (waist / chest / hips / arms / thighs / neck) with a
+    collapsible Today-tab section and a "BODY TRANSFORMATION" delta on Stats.
+  - Mood / energy / discipline 1-5 sliders on Today; 7-day rolling-average
+    trend on Stats.
+  - Per-workout type + location dropdowns (Lift/Run/.../Outdoor/Gym/...).
+    `location === 'Outdoor'` now implies the existing `w?outdoor` flag.
+    Top-3 type-@-location combos surface in a "WORKOUT BREAKDOWN" card.
+  - End-of-day failure-log prompt: on boot, if yesterday was incomplete and
+    not previously asked about, surface a banner asking for a one-line reason.
+    All recorded reasons appear in a Stats "FAILURE LOG" sub-section.
+- Schema migration v4 + new pure helpers (`getMeasurementsDiff`,
+  `buildWellbeingTrend`, `pickFailureDay`, `getFailureLog`) with unit tests.
+
+### Changed
+- `CURRENT_SCHEMA_VERSION` bumped to 4. Existing v3 (and older) states are
+  upgraded in place; new per-day fields default to "empty" representations.
+- Service worker cache bumped to `v2` to pick up the new modules.
+
 ## [0.1.0] -- 2026-06-01
 
 ### Changed

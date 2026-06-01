@@ -104,6 +104,9 @@
 
   <!-- TODAY TAB -->
   <div class="tab-panel active" role="tabpanel" id="tab-today">
+    <!-- v4: end-of-day failure-log prompt host. Boot may inject a banner here. -->
+    <div id="failure-prompt-host"></div>
+
     <div class="current-day-banner">
       <div class="day-number-display">
         <span class="num" id="current-day-num">1</span>
@@ -153,12 +156,18 @@
       <button class="btn-sm">SAVE METRICS</button>
     </div>
 
+    <!-- BODY MEASUREMENTS (v4) — collapsible, folded by default. -->
+    <div class="section" id="measurements-section"></div>
+
     <!-- NOTES -->
     <div class="section">
       <div class="section-title">FIELD NOTES</div>
       <textarea class="notes-textarea" id="notes-input" placeholder="// Log your thoughts, meals, workouts, mindset..."></textarea>
       <button class="btn-save-note">[ SAVE NOTE ]</button>
     </div>
+
+    <!-- WELLBEING SLIDERS (v4) -->
+    <div class="section" id="wellbeing-section"></div>
   </div>
 
   <!-- GRID TAB -->
@@ -186,6 +195,11 @@
         <div class="chart-title">// SLEEP TREND (hrs)</div>
         <div class="chart-bars" id="sleep-chart"></div>
       </div>
+      <!-- v4 deeper-tracking sub-sections. Each hides itself when empty. -->
+      <div class="chart-wrap stats-subsection" id="stats-body-transform"></div>
+      <div class="chart-wrap stats-subsection" id="stats-wellbeing"></div>
+      <div class="chart-wrap stats-subsection" id="stats-workout-breakdown"></div>
+      <div class="chart-wrap stats-subsection" id="stats-failure-log"></div>
     </div>
   </div>
 
