@@ -46,6 +46,7 @@
         </div>
       </div>
       <button class="icon-btn" title="Toggle theme" aria-label="Toggle theme" id="theme-btn">☀️</button>
+      <button class="icon-btn" title="Settings" aria-label="Open settings" id="settings-btn">⚙</button>
     </div>
   </div>
 
@@ -243,6 +244,7 @@
         Store this file as your backup.
       </div>
       <button class="btn-export">⬇ EXPORT DATA</button>
+      <button class="btn-print-report" id="btn-print-report">🖨 PRINT REPORT</button>
       <div style="margin:1.5rem 0;border-top:1px solid var(--border);"></div>
       <div class="export-info" style="border-left-color:var(--red);color:var(--red);">
         ⚠ DANGER ZONE — Resetting will permanently erase ALL data including photos.
@@ -291,6 +293,83 @@
 
 <!-- CONFETTI -->
 <div class="confetti-container" id="confetti-container"></div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay settings-modal" id="settings-overlay">
+  <div class="modal" id="settings-content">
+    <div class="modal-header">
+      <div>
+        <div class="modal-day-title">SETTINGS</div>
+        <div class="modal-date-sub">// CUSTOMIZE PROTOCOL</div>
+      </div>
+      <button class="modal-close" id="settings-close" aria-label="Close settings">[ CLOSE ]</button>
+    </div>
+
+    <div class="settings-list">
+      <div class="settings-row">
+        <label class="settings-label" for="set-confetti">
+          <span class="settings-name">Confetti on Day Complete</span>
+          <span class="settings-hint">// Visual celebration when all 6 tasks done</span>
+        </label>
+        <input type="checkbox" class="settings-check" id="set-confetti">
+      </div>
+
+      <div class="settings-row">
+        <label class="settings-label" for="set-quote-sec">
+          <span class="settings-name">Quote Rotation (seconds)</span>
+          <span class="settings-hint">// 0 = disable rotation; 0..300</span>
+        </label>
+        <input type="number" class="settings-input" id="set-quote-sec" min="0" max="300" step="1">
+      </div>
+
+      <div class="settings-row">
+        <label class="settings-label" for="set-weight-unit">
+          <span class="settings-name">Weight Unit</span>
+          <span class="settings-hint">// Storage stays lbs internally — display only</span>
+        </label>
+        <select class="settings-input" id="set-weight-unit">
+          <option value="lbs">lbs</option>
+          <option value="kg">kg</option>
+        </select>
+      </div>
+
+      <div class="settings-row">
+        <label class="settings-label" for="set-reduced-motion">
+          <span class="settings-name">Reduced Motion</span>
+          <span class="settings-hint">// Auto honors system pref; on/off forces it</span>
+        </label>
+        <select class="settings-input" id="set-reduced-motion">
+          <option value="auto">auto</option>
+          <option value="on">on</option>
+          <option value="off">off</option>
+        </select>
+      </div>
+
+      <div class="settings-row">
+        <label class="settings-label" for="set-forget-photos">
+          <span class="settings-name">Forget Photos on Reset</span>
+          <span class="settings-hint">// Wipe stored photos when challenge is reset</span>
+        </label>
+        <input type="checkbox" class="settings-check" id="set-forget-photos">
+      </div>
+
+      <div class="settings-row settings-row-block">
+        <label class="settings-label" for="set-custom-quotes">
+          <span class="settings-name">// CUSTOM QUOTES — one per line, format: "quote" — author</span>
+        </label>
+        <textarea class="settings-textarea" id="set-custom-quotes" placeholder='"Do hard things." — Anonymous'></textarea>
+      </div>
+    </div>
+
+    <div class="settings-actions">
+      <button class="btn-sm" id="settings-save">SAVE SETTINGS</button>
+      <button class="btn-cancel" id="settings-cancel-btn">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<!-- DAY 75 PRINT REPORT (hidden until ?report=1) -->
+<div id="report-view"></div>
 
 <script type="module" src="js/main.js"></script>
 </body>

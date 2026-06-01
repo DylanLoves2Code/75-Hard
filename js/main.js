@@ -24,6 +24,10 @@ import { renderDrinksLog, logDrinks } from './drinks.js';
 import { closeModal, closeModalDirect } from './modal.js';
 import { exportData, confirmReset, cancelReset, executeReset } from './export.js';
 import { on } from './bus.js';
+import {
+  getSettings, openSettings, closeSettings, applySettingsFromModal,
+} from './settings.js';
+import { renderReport } from './report.js';
 
 /**
  * Re-render the entire app shell from the given state. This is the
@@ -95,7 +99,34 @@ function initChallenge(){
   startQuoteRotation(s);
 }
 
+/**
+ * Apply the "force reduced motion" body class based on the current
+ * settings choice. Called at boot and whenever settings change.
+ * @returns {void}
+ */
+function applyReducedMotionClass(){
+  const mode=getSettings().reducedMotion;
+  document.body.classList.toggle('force-reduced-motion',mode==='on');
+}
+
 function boot(){
+  // Day 75 print-report mode: ?report=1 bypasses the normal app shell
+  // entirely. We still need state to render the report, so the setup
+  // path is unreachable here (no data -> redirect back to normal app).
+  const params=new URLSearchParams(window.location.search);
+  if(params.get('report')==='1'){
+    const s=getState();
+    if(!s){
+      window.location.search='';
+      return;
+    }
+    applyTheme();
+    applyReducedMotionClass();
+    document.body.classList.add('report-mode');
+    renderReport(s);
+    return;
+  }
+
   const s=getState();
   if(!s){
     const today=new Date();
@@ -106,6 +137,7 @@ function boot(){
     document.getElementById('setup-screen').classList.remove('active');
     document.getElementById('app').style.display='block';
     applyTheme();
+    applyReducedMotionClass();
     renderAll(s);
     startCountdown(s);
     startQuoteRotation(s);
@@ -116,6 +148,15 @@ function boot(){
 function wireStaticHandlers(){
   document.querySelector('#setup-screen .btn-primary').addEventListener('click',initChallenge);
   document.getElementById('theme-btn').addEventListener('click',toggleTheme);
+
+  // Settings panel — header gear icon opens it; modal has save/cancel/close.
+  document.getElementById('settings-btn').addEventListener('click',openSettings);
+  document.getElementById('settings-close').addEventListener('click',closeSettings);
+  document.getElementById('settings-cancel-btn').addEventListener('click',closeSettings);
+  document.getElementById('settings-save').addEventListener('click',applySettingsFromModal);
+  document.getElementById('settings-overlay').addEventListener('click',e=>{
+    if(e.target===document.getElementById('settings-overlay'))closeSettings();
+  });
 
   document.querySelectorAll('.app-tabs .tab-btn').forEach(btn=>{
     const id=btn.dataset.tab;
@@ -133,6 +174,9 @@ function wireStaticHandlers(){
 
   document.querySelector('#tab-export .btn-export').addEventListener('click',exportData);
   document.querySelector('#tab-export .btn-reset-full').addEventListener('click',confirmReset);
+  document.getElementById('btn-print-report').addEventListener('click',()=>{
+    window.location.search='?report=1';
+  });
 
   document.getElementById('modal-overlay').addEventListener('click',closeModal);
   document.querySelector('#modal-content .modal-close').addEventListener('click',closeModalDirect);
@@ -167,6 +211,15 @@ function wireBus(){
   on('state:stats', renderStats);
   on('state:gallery', renderGallery);
   on('state:drinks', renderDrinksLog);
+
+  // Settings changes ripple into Today (unit-aware inputs) + Stats
+  // (unit-aware avg/chart) + the reduced-motion body class. The quote
+  // rotation re-subscribes to this event in startQuoteRotation.
+  on('settings:changed', () => {
+    applyReducedMotionClass();
+    const s = getState();
+    if(s) renderAll(s);
+  });
 }
 
 wireStaticHandlers();

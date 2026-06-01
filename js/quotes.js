@@ -48,25 +48,55 @@ export const QUOTES = [
   {q:"Move swift as the wind and closely-formed as the wood; attack like the fire and be still as the mountain.",a:"— Sun Tzu"},
 ];
 
+import { getSettings } from './settings.js';
+import { on } from './bus.js';
+
 let quoteInterval=null;
+let busWired=false;
+
+/**
+ * Combined quote pool — built-ins plus any user-supplied custom quotes
+ * from settings. Returned as a fresh array on each call so callers can
+ * mutate freely without affecting the underlying constants.
+ * @returns {Quote[]}
+ */
+export function getQuotePool(){
+  const custom=getSettings().customQuotes||[];
+  return QUOTES.concat(custom);
+}
 
 /** Pick and render a random quote into the banner. @returns {void} */
 export function setQuote(){
-  const q=QUOTES[Math.floor(Math.random()*QUOTES.length)];
+  const pool=getQuotePool();
+  if(!pool.length)return;
+  const q=pool[Math.floor(Math.random()*pool.length)];
   document.getElementById('quote-text').textContent='"'+q.q+'"';
-  document.getElementById('quote-attr').textContent=q.a;
+  document.getElementById('quote-attr').textContent=q.a||'';
 }
 
 /**
- * Begin the 20s quote-rotation interval.
- * @param {import('./state.js').State} s  Currently unused; kept for symmetry with other start* helpers.
+ * Begin the quote-rotation interval. The interval comes from
+ * `settings.quoteRotationSec * 1000`; `0` disables rotation (a single
+ * quote is still rendered on call). Subscribes once to
+ * `settings:changed` so live edits in the settings modal take effect
+ * immediately.
+ * @param {import('./state.js').State} [_s]  Unused; kept for symmetry with other start* helpers.
  * @returns {void}
  */
-// eslint-disable-next-line no-unused-vars
-export function startQuoteRotation(s){
+export function startQuoteRotation(_s){
   setQuote();
-  if(quoteInterval)clearInterval(quoteInterval);
-  quoteInterval=setInterval(setQuote,20000);
+  if(quoteInterval){clearInterval(quoteInterval);quoteInterval=null;}
+  const sec=getSettings().quoteRotationSec;
+  if(sec>0)quoteInterval=setInterval(setQuote,sec*1000);
+  if(!busWired){
+    busWired=true;
+    on('settings:changed',()=>{
+      // Re-pick from the (possibly newly larger) pool immediately, then
+      // restart the interval at the new interval. Pass undefined to
+      // avoid hammering the unused `s` argument.
+      startQuoteRotation();
+    });
+  }
 }
 
 /** Stop the quote-rotation interval (used on reset). @returns {void} */
