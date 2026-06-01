@@ -22,7 +22,11 @@ import { renderGallery, renderCompare, closeLightbox } from './photos.js';
 import { renderBooks, saveBookEntry } from './books.js';
 import { renderDrinksLog, logDrinks } from './drinks.js';
 import { closeModal, closeModalDirect } from './modal.js';
-import { exportData, confirmReset, cancelReset, executeReset } from './export.js';
+import {
+  exportData, confirmReset, cancelReset, executeReset,
+  pickImportFile, handleImportFile, executeImport, cancelImport,
+  exportPhotosZip, pickPhotoZipFile, handlePhotoZipFile,
+} from './export.js';
 import { on } from './bus.js';
 import {
   getSettings, openSettings, closeSettings, applySettingsFromModal,
@@ -172,11 +176,19 @@ function wireStaticHandlers(){
   document.querySelector('#tab-books .btn-sm').addEventListener('click',saveBookEntry);
   document.querySelector('#tab-drinks .btn-log').addEventListener('click',logDrinks);
 
-  document.querySelector('#tab-export .btn-export').addEventListener('click',exportData);
+  document.getElementById('btn-export-data').addEventListener('click',exportData);
+  document.getElementById('btn-import-data').addEventListener('click',pickImportFile);
+  document.getElementById('btn-export-photos').addEventListener('click',exportPhotosZip);
+  document.getElementById('btn-import-photos').addEventListener('click',pickPhotoZipFile);
+  document.getElementById('import-file-input').addEventListener('change',handleImportFile);
+  document.getElementById('import-zip-input').addEventListener('change',handlePhotoZipFile);
   document.querySelector('#tab-export .btn-reset-full').addEventListener('click',confirmReset);
   document.getElementById('btn-print-report').addEventListener('click',()=>{
     window.location.search='?report=1';
   });
+
+  document.getElementById('btn-import-confirm').addEventListener('click',executeImport);
+  document.getElementById('btn-import-cancel').addEventListener('click',cancelImport);
 
   document.getElementById('modal-overlay').addEventListener('click',closeModal);
   document.querySelector('#modal-content .modal-close').addEventListener('click',closeModalDirect);
