@@ -23,24 +23,32 @@ export function renderTaskList(s,day,containerId,isToday){
   TASKS.forEach(t=>{
     const done=dd[t.key];
     if(t.single){
-      const el=document.createElement('div');
-      el.className='task-item'+(done?' done':'');
       let labelText=t.label;
       if(t.customLabel){
         labelText=dd[t.key+'label']||t.label;
       }
       const showEdit=t.customLabel&&isToday&&!isFuture;
+      // Rows that host an interactive EDIT child must remain a div
+      // (nested <button> inside <button> is invalid HTML). Otherwise
+      // promote to a real <button> for native a11y semantics.
+      const useButton=!showEdit;
+      const el=document.createElement(useButton?'button':'div');
+      if(useButton)el.type='button';
+      el.className='task-item'+(done?' done':'');
       el.innerHTML=`
         <div class="task-check"><svg class="task-check-icon" width="12" height="10" viewBox="0 0 12 10"><path d="M1 5L4.5 8.5L11 1.5" stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round" fill="none"/></svg></div>
         <span class="task-icon">${t.icon}</span>
         <span class="task-label">${labelText}</span>
         ${showEdit?`<button type="button" class="btn-edit-label" aria-label="Rename ${t.label}">[ EDIT ]</button>`:''}
       `;
-      el.setAttribute('role','button');
       el.setAttribute('aria-pressed',done?'true':'false');
       el.setAttribute('aria-label',labelText);
+      if(!useButton){
+        // Fallback ARIA shim path (rows with a nested EDIT button).
+        el.setAttribute('role','button');
+      }
       if(!isFuture){
-        el.setAttribute('tabindex','0');
+        if(!useButton)el.setAttribute('tabindex','0');
         const activate=()=>{
           if(el.classList.contains('editing'))return;
           const s2=getState();
@@ -55,13 +63,17 @@ export function renderTaskList(s,day,containerId,isToday){
           if(e.target.closest('.task-label-input'))return;
           activate();
         });
-        el.addEventListener('keydown',e=>{
-          if(e.target!==el)return;
-          if(e.key==='Enter'||e.key===' '){
-            e.preventDefault();
-            activate();
-          }
-        });
+        if(!useButton){
+          // Native <button> handles Enter/Space natively; the shim path
+          // still needs an explicit keydown bridge.
+          el.addEventListener('keydown',e=>{
+            if(e.target!==el)return;
+            if(e.key==='Enter'||e.key===' '){
+              e.preventDefault();
+              activate();
+            }
+          });
+        }
         if(showEdit){
           const editBtn=el.querySelector('.btn-edit-label');
           editBtn.addEventListener('click',e=>{
@@ -69,7 +81,10 @@ export function renderTaskList(s,day,containerId,isToday){
             startEditLabel(el,t,day,containerId,isToday);
           });
         }
-      } else {el.style.opacity='0.4';el.style.cursor='default';}
+      } else {
+        if(useButton)el.disabled=true;
+        el.style.opacity='0.4';el.style.cursor='default';
+      }
       container.appendChild(el);
     } else {
       const pKey=photoKey(day);

@@ -46,7 +46,7 @@
 :root {
   --bg:#0a0a0a;--bg2:#111;--bg3:#1a1a1a;--bg4:#222;
   --border:#2a2a2a;--border2:#333;
-  --text:#e8e8e8;--text2:#888;--text3:#555;
+  --text:#e8e8e8;--text2:#888;--text3:#8a8a8a;
   --accent:#ff3c00;--accent2:#ff6a00;
   --gold:#f5c400;--green:#00e676;--yellow:#ffea00;
   --red:#ff1744;--blue:#00b0ff;--purple:#d500f9;
@@ -57,9 +57,15 @@
 .light-mode {
   --bg:#f0ece4;--bg2:#e8e3d9;--bg3:#ddd8cc;--bg4:#d4cfc2;
   --border:#c8c2b4;--border2:#b8b2a4;
-  --text:#1a1a1a;--text2:#555;--text3:#888;
+  --text:#1a1a1a;--text2:#555;--text3:#666;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+/* Native-button reset for elements promoted from <div> to <button>.
+   Strips UA defaults (font/color/text-align/appearance) so subsequent
+   class-based rules below render identically to the legacy divs.
+   The `background:none; border:none;` reset is overridden by the
+   class-specific rules further down (same specificity, later wins). */
+.task-item,.water-cup,.day-tile{background:none;border:none;font:inherit;color:inherit;text-align:left;appearance:none;cursor:pointer;}
 html{scroll-behavior:smooth;}
 body{background:var(--bg);color:var(--text);font-family:var(--font-b);min-height:100vh;overflow-x:hidden;transition:background 0.3s,color 0.3s;}
 body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:999;opacity:0.3;}
@@ -330,3 +336,15 @@ input[type="file"]{display:none;}
 .task-item:focus-visible,
 .water-cup:focus-visible,
 .day-tile:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+/* Respect prefers-reduced-motion: cut animations and transitions
+   nearly to zero so users with vestibular sensitivities aren't
+   subjected to slideUp/slideIn/pulse/confetti motion. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
