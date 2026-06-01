@@ -1,10 +1,11 @@
 /** @file Stats tab — overview cards plus weekly/weight/sleep bar charts. */
 import { TOTAL } from './constants.js';
-import { getDayData, isDayComplete, calcCurrentDay, calcStreak, countCompleteDays } from './state.js';
+import { getDayData, isDayComplete, calcCurrentDay, calcStreak, countCompleteDays, getDateForDay, getState } from './state.js';
 import { getSettings, lbsToKg } from './settings.js';
 import { getMeasurementsDiff } from './measurements.js';
 import { buildWellbeingTrend } from './wellbeing.js';
 import { getFailureLog } from './failure.js';
+import { downloadCard } from './sharecard.js';
 
 /**
  * Render the stats overview cards and bar charts from saved state.
@@ -80,6 +81,190 @@ export function renderStats(s){
   renderWellbeingTrend(s);
   renderWorkoutBreakdown(s);
   renderFailureLog(s);
+
+  // w5b: 75-day heatmap + day-of-week miss pattern.
+  renderHeatmap(s);
+  renderMissPattern(s);
+  wireShareCardButton(s);
+}
+
+/**
+ * Render the 75-day "GitHub-style" heatmap into `#heatmap-grid`. A 15-
+ * column × 5-row layout puts the whole challenge on one screen on
+ * mobile without scrolling. Each tile is a button-promoted div with a
+ * `data-tip` tooltip; the same hover-tooltip CSS used by chart bars
+ * already covers it.
+ *
+ * Coloring matches the brief:
+ *   - complete day → bright `--accent`
+ *   - partial day  → muted yellow
+ *   - incomplete   → outline only
+ *   - future day   → very dim
+ *
+ * @param {import('./state.js').State} s
+ */
+export function renderHeatmap(s){
+  const host = document.getElementById('heatmap-grid');
+  if(!host) return;
+  host.innerHTML = '';
+  const today = calcCurrentDay();
+  for(let d = 1; d <= TOTAL; d++){
+    const cell = document.createElement('div');
+    cell.className = 'hm-cell';
+    const complete = isDayComplete(s, d);
+    const dd = getDayData(s, d);
+    const any = dd.dietAdherence || dd.calorie || dd.w1 || dd.w2 || dd.read || dd.water || dd.photo;
+    const future = d > today;
+    if(complete) cell.classList.add('complete');
+    else if(!future && any) cell.classList.add('partial');
+    else if(future) cell.classList.add('future');
+    else cell.classList.add('incomplete');
+    // Tooltip — same CSS as `.chart-bar:hover::after`.
+    const tipParts = [];
+    tipParts.push(`Day ${d}`);
+    if(future) tipParts.push('future');
+    else if(complete) tipParts.push('all 6 tasks done');
+    else {
+      const done =
+        ((dd.dietAdherence||dd.calorie)?1:0) +
+        (dd.w1?1:0) + (dd.w2?1:0) +
+        (dd.read?1:0) + (dd.water?1:0) + (dd.photo?1:0);
+      tipParts.push(`${done}/6 tasks`);
+    }
+    cell.setAttribute('data-tip', tipParts.join(' — '));
+    cell.setAttribute('aria-label', tipParts.join(' — '));
+    host.appendChild(cell);
+  }
+}
+
+/**
+ * Render the day-of-week miss-pattern card. Bars show miss percentage
+ * per weekday (Mon-Sun); the highest bar is highlighted red. A
+ * single-line takeaway is shown only when at least 14 days have
+ * elapsed (otherwise the sample is too small to be meaningful).
+ *
+ * Hides itself when not enough data has accumulated to be useful
+ * (< 7 evaluated days).
+ *
+ * @param {import('./state.js').State} s
+ */
+function renderMissPattern(s){
+  const host = document.getElementById('stats-miss-pattern');
+  if(!host) return;
+  const today = calcCurrentDay();
+  // Need at least a week of past data to bother showing anything.
+  if(today < 7){
+    host.innerHTML = '';
+    return;
+  }
+  const stats = computeMissPatternByWeekday(s);
+  if(!stats || !stats.length){
+    host.innerHTML = '';
+    return;
+  }
+  // Locate the worst day. We hide takeaway entirely when meaningful
+  // data is too thin (< 2 weeks).
+  const meaningful = today >= 14;
+  let worst = null;
+  for(const row of stats){
+    if(row.total === 0) continue;
+    if(!worst || row.missPct > worst.missPct) worst = row;
+  }
+  const bars = stats.map((row, i) => {
+    const highlight = (worst && i === stats.indexOf(worst));
+    const h = Math.max(2, Math.round(row.missPct * 0.8));
+    const color = highlight ? 'var(--red)' : 'var(--accent)';
+    const tip = row.total === 0
+      ? `${row.label}: no data`
+      : `${row.label}: ${row.misses}/${row.total} missed (${row.missPct}%)`;
+    return `
+      <div class="mp-col">
+        <div class="mp-bar" style="height:${h}px;background:${color};" data-tip="${tip}"></div>
+        <div class="mp-lbl">${row.short}</div>
+      </div>`;
+  }).join('');
+  const takeaway = (meaningful && worst && worst.missPct > 0)
+    ? `<div class="mp-takeaway">// Most often missed on ${worst.label}s (${worst.missPct}% miss rate)</div>`
+    : (meaningful ? '<div class="mp-takeaway">// No misses yet — keep it locked in.</div>' : '');
+  host.innerHTML = `
+    <div class="chart-title">// MISS PATTERN — DAY OF WEEK</div>
+    <div class="mp-row">${bars}</div>
+    ${takeaway}
+  `;
+}
+
+/**
+ * Pure helper: compute the day-of-week miss distribution from the
+ * saved state. Returns one row per weekday (Monday first, Sunday last).
+ *
+ * For each elapsed day `d` in `[1, currentDay]`, classify it as a miss
+ * if {@link isDayComplete} is false. Bucket misses + totals by the
+ * weekday derived from the day's calendar date (via the state's
+ * `startDate`).
+ *
+ * @param {import('./state.js').State} s
+ * @returns {Array<{key:number,label:string,short:string,misses:number,total:number,missPct:number}>}
+ *   Empty `[]` if `s` lacks a startDate.
+ */
+export function computeMissPatternByWeekday(s){
+  if(!s || !s.startDate) return [];
+  const today = calcCurrentDay();
+  // Monday-first ordering: keys 1..6 then 0 (Sunday).
+  const ORDER = [1, 2, 3, 4, 5, 6, 0];
+  const LABELS = {
+    0: ['Sunday',    'SUN'],
+    1: ['Monday',    'MON'],
+    2: ['Tuesday',   'TUE'],
+    3: ['Wednesday', 'WED'],
+    4: ['Thursday',  'THU'],
+    5: ['Friday',    'FRI'],
+    6: ['Saturday',  'SAT'],
+  };
+  const buckets = new Map();
+  for(const k of ORDER) buckets.set(k, {misses: 0, total: 0});
+  for(let d = 1; d <= today; d++){
+    // We only score days that have actually passed (so today, if
+    // incomplete, still counts — the day's not over but the rule is
+    // "incomplete-day-of-the-prior-N-days"; we treat today the same).
+    const date = getDateForDay(d);
+    const wd = date.getDay();
+    const bucket = buckets.get(wd);
+    if(!bucket) continue;
+    bucket.total++;
+    if(!isDayComplete(s, d)) bucket.misses++;
+  }
+  return ORDER.map(k => {
+    const b = buckets.get(k);
+    const missPct = b.total > 0 ? Math.round((b.misses / b.total) * 100) : 0;
+    return {
+      key: k,
+      label: LABELS[k][0],
+      short: LABELS[k][1],
+      misses: b.misses,
+      total: b.total,
+      missPct,
+    };
+  });
+}
+
+/**
+ * Wire the GENERATE CARD button. Idempotent — replaces the listener on
+ * each rerender so it always points at the latest state snapshot. We
+ * re-fetch state at click time anyway, so the closure capture isn't
+ * load-bearing.
+ *
+ * @param {import('./state.js').State} _s  Unused; we re-fetch via getState().
+ */
+function wireShareCardButton(_s){
+  const btn = document.getElementById('btn-generate-card');
+  if(!btn) return;
+  if(btn._wired) return;
+  btn._wired = true;
+  btn.addEventListener('click', () => {
+    const live = getState();
+    if(!live) return;
+    downloadCard(live);
+  });
 }
 
 /**

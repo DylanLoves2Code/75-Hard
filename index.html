@@ -115,6 +115,9 @@
       <div class="day-date-sub" id="current-day-date">TODAY</div>
     </div>
 
+    <!-- w5b: achievement badges strip. main.js renders into this on every state change. -->
+    <div id="badge-strip" class="badge-strip" aria-label="Achievement badges"></div>
+
     <div class="day-complete-banner" id="complete-banner" aria-live="polite">
       <div class="complete-icon">🔥</div>
       <div class="complete-text">
@@ -195,6 +198,22 @@
     <div class="section">
       <div class="section-title">PERFORMANCE STATS</div>
       <div class="stats-grid" id="stats-grid"></div>
+
+      <!-- w5b: GitHub-style heatmap (15×5). stats.js renders into this. -->
+      <div class="chart-wrap" id="stats-heatmap-wrap">
+        <div class="chart-title">// 75-DAY HEATMAP</div>
+        <div class="heatmap-grid" id="heatmap-grid" role="img" aria-label="75-day completion heatmap"></div>
+        <div class="heatmap-legend">
+          <span class="hm-leg-item"><span class="hm-leg-sq complete"></span>Complete</span>
+          <span class="hm-leg-item"><span class="hm-leg-sq partial"></span>Partial</span>
+          <span class="hm-leg-item"><span class="hm-leg-sq incomplete"></span>Incomplete</span>
+          <span class="hm-leg-item"><span class="hm-leg-sq future"></span>Future</span>
+        </div>
+      </div>
+
+      <!-- w5b: day-of-week miss-pattern bars. stats.js renders into this. -->
+      <div class="chart-wrap stats-subsection" id="stats-miss-pattern"></div>
+
       <div class="chart-wrap">
         <div class="chart-title">// WEEKLY COMPLETION RATE</div>
         <div class="chart-bars" id="completion-chart"></div>
@@ -212,6 +231,13 @@
       <div class="chart-wrap stats-subsection" id="stats-wellbeing"></div>
       <div class="chart-wrap stats-subsection" id="stats-workout-breakdown"></div>
       <div class="chart-wrap stats-subsection" id="stats-failure-log"></div>
+
+      <!-- w5b: shareable progress card. -->
+      <div class="chart-wrap" id="stats-sharecard-wrap">
+        <div class="chart-title">// SHAREABLE CARD</div>
+        <div class="sharecard-hint">// 1080×1080 PNG summary of your run so far</div>
+        <button type="button" class="btn-sharecard" id="btn-generate-card">GENERATE CARD</button>
+      </div>
     </div>
   </div>
 

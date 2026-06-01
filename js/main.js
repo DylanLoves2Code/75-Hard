@@ -40,6 +40,9 @@ import {
   scheduleDailyReminders, requestPermission, testNotification,
 } from './notifications.js';
 import { renderReport } from './report.js';
+import {
+  BADGES, getUnlockedBadges, newlyUnlocked, consumeCelebrationFlag,
+} from './badges.js';
 
 /**
  * Re-render the entire app shell from the given state. This is the
@@ -102,6 +105,52 @@ export function renderAll(s){
   renderStats(s);
   renderGallery(s);
   renderBooks(s);
+
+  // w5b: achievement badge strip on Today.
+  renderBadgeStrip(s);
+}
+
+/**
+ * Track the most-recently-rendered unlocked badge ids so we can detect
+ * fresh unlocks across rerenders and trigger a one-time celebration
+ * animation per session.
+ * @type {string[]}
+ */
+let lastUnlockedIds = [];
+
+/**
+ * Render the achievement-badge strip on the Today tab. Locked badges
+ * render grey; unlocked badges render in accent color. Freshly-unlocked
+ * badges (first sighting in this session) get a `.celebrate` class
+ * that pulses once.
+ *
+ * @param {import('./state.js').State} s
+ */
+export function renderBadgeStrip(s){
+  const host = document.getElementById('badge-strip');
+  if(!host) return;
+  const unlocked = getUnlockedBadges(s);
+  const unlockedIds = unlocked.map(b => b.id);
+  const fresh = newlyUnlocked(lastUnlockedIds, unlockedIds);
+  lastUnlockedIds = unlockedIds;
+  host.innerHTML = '';
+  for(const b of BADGES){
+    const isUnlocked = unlockedIds.includes(b.id);
+    const el = document.createElement('div');
+    el.className = 'badge' + (isUnlocked ? ' unlocked' : ' locked');
+    el.setAttribute('role', 'group');
+    el.setAttribute('aria-label', b.title + (isUnlocked ? ' (unlocked)' : ' (locked)'));
+    el.setAttribute('title', b.description);
+    el.innerHTML = `
+      <div class="badge-title">${b.title}</div>
+      <div class="badge-desc">${b.description}</div>
+    `;
+    // Celebration: fire the animation once per session per badge id.
+    if(isUnlocked && fresh.includes(b.id) && consumeCelebrationFlag(b.id)){
+      el.classList.add('celebrate');
+    }
+    host.appendChild(el);
+  }
 }
 
 /**
