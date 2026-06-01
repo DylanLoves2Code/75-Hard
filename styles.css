@@ -484,3 +484,78 @@ body.report-mode #report-view{display:block;}
   .report-section { page-break-inside: avoid; break-inside: avoid; margin-bottom: 0.75rem; }
   .report-photo .lbl { background: #fff !important; color: #000 !important; border-top: 1px solid #000; }
 }
+
+/* =========================================================================
+   v4: Deeper-tracking UI — body measurements, wellbeing sliders, workout
+   type/location selects, failure-log prompt + stats sub-sections.
+   ========================================================================= */
+
+/* Workout rows host a horizontal main line and (when present) a second
+   line of two selects. On narrow screens we let them wrap. */
+.task-row-main{display:flex;align-items:center;gap:0.7rem;flex:1;}
+.task-item-workout{flex-direction:column;align-items:stretch;gap:0.45rem;}
+.task-row-selects{display:flex;gap:0.4rem;flex-wrap:wrap;padding-left:1.7rem;}
+.task-select{flex:1;min-width:0;background:var(--bg);border:1px solid var(--border2);border-left:3px solid var(--accent);color:var(--text);font-family:var(--font-m);font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;padding:0.25rem 0.4rem;outline:none;-webkit-appearance:none;appearance:none;color-scheme:dark;cursor:pointer;}
+.task-select:focus{border-color:var(--accent2);}
+.task-select.task-select-type{border-left-color:var(--gold);}
+.task-select.task-select-loc{border-left-color:var(--blue);}
+
+/* BODY MEASUREMENTS — collapsible folded by default. */
+.measurements-toggle{width:100%;display:flex;justify-content:space-between;align-items:center;background:transparent;border:none;color:var(--text);font-family:var(--font-d);font-size:1.3rem;letter-spacing:0.1em;cursor:pointer;padding:0;text-align:left;}
+.measurements-toggle:hover .measurements-chevron{color:var(--accent);}
+.measurements-title{flex:1;display:flex;align-items:center;gap:0.75rem;}
+.measurements-title::after{content:'';flex:1;height:1px;background:var(--border);margin-left:0.75rem;}
+.measurements-chevron{font-family:var(--font-m);font-size:0.7rem;color:var(--text3);letter-spacing:0.15em;flex-shrink:0;margin-left:0.5rem;transition:color 0.2s;}
+.measurements-body{margin-top:0.85rem;}
+.measurement-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem;margin-bottom:0.75rem;}
+.measurement-input-wrap{display:flex;flex-direction:column;gap:0.3rem;}
+.measurement-label{font-family:var(--font-m);font-size:0.55rem;color:var(--text2);letter-spacing:0.15em;text-transform:uppercase;}
+.measurement-input{background:var(--bg3);border:1px solid var(--border2);border-left:3px solid var(--purple);color:var(--text);font-family:var(--font-d);font-size:1.1rem;padding:0.35rem 0.5rem;outline:none;width:100%;-moz-appearance:textfield;-webkit-appearance:none;appearance:none;}
+.measurement-input::-webkit-outer-spin-button,.measurement-input::-webkit-inner-spin-button{-webkit-appearance:none;}
+.measurement-input:focus{border-color:var(--accent2);}
+@media(max-width:480px){
+  .measurement-grid{grid-template-columns:repeat(2,1fr);}
+}
+
+/* WELLBEING SLIDERS */
+.wb-grid{display:flex;flex-direction:column;gap:0.6rem;margin-bottom:0.4rem;}
+.wb-row{display:flex;flex-direction:column;gap:0.25rem;}
+.wb-label{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--font-m);font-size:0.65rem;color:var(--text2);letter-spacing:0.15em;text-transform:uppercase;}
+.wb-val{font-family:var(--font-d);font-size:1.1rem;}
+.wb-slider{width:100%;-webkit-appearance:none;appearance:none;height:6px;background:var(--bg3);border:1px solid var(--border);border-left:3px solid var(--gold);outline:none;cursor:pointer;}
+.wb-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;background:var(--accent);border:2px solid var(--bg);cursor:pointer;border-radius:0;}
+.wb-slider::-moz-range-thumb{width:18px;height:18px;background:var(--accent);border:2px solid var(--bg);cursor:pointer;border-radius:0;}
+.wb-slider:disabled{opacity:0.4;cursor:default;}
+.wb-hint{font-family:var(--font-m);font-size:0.55rem;color:var(--text3);letter-spacing:0.15em;margin-top:0.4rem;}
+
+/* FAILURE-LOG PROMPT — inline banner at the top of Today. */
+.failure-prompt{margin:0 1.25rem 1.25rem;padding:0.8rem 1rem;background:var(--bg2);border:1px solid var(--yellow);border-left:4px solid var(--yellow);}
+.failure-prompt-head{margin-bottom:0.55rem;}
+.failure-prompt-title{font-family:var(--font-d);font-size:1rem;color:var(--yellow);letter-spacing:0.1em;}
+.failure-prompt-sub{font-family:var(--font-m);font-size:0.6rem;color:var(--text2);letter-spacing:0.15em;text-transform:uppercase;margin-top:0.15rem;}
+.failure-prompt-row{display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;}
+.failure-prompt-input{flex:1;min-width:140px;background:var(--bg3);border:1px solid var(--border2);border-left:3px solid var(--yellow);color:var(--text);font-family:var(--font-m);font-size:0.7rem;padding:0.4rem 0.6rem;outline:none;-webkit-appearance:none;appearance:none;}
+.failure-prompt-input:focus{border-color:var(--accent2);border-left-color:var(--accent);}
+.failure-prompt-skip,.failure-prompt-log{background:transparent;border:1px solid var(--border2);color:var(--text2);font-family:var(--font-m);font-size:0.6rem;letter-spacing:0.15em;padding:0.4rem 0.7rem;cursor:pointer;text-transform:uppercase;transition:all 0.15s;}
+.failure-prompt-log{border-color:var(--yellow);color:var(--yellow);}
+.failure-prompt-log:hover{background:var(--yellow);color:#000;}
+.failure-prompt-skip:hover{border-color:var(--text2);color:var(--text);}
+
+/* STATS sub-sections (body transform, wellbeing trend, workout breakdown, failure log) */
+.stats-subsection:empty{display:none;}
+.bt-list,.fl-list{display:flex;flex-direction:column;gap:0.35rem;}
+.bt-row{display:flex;align-items:center;gap:0.6rem;padding:0.4rem 0.55rem;background:var(--bg);border:1px solid var(--border);border-left:3px solid var(--purple);}
+.bt-label{font-family:var(--font-m);font-size:0.65rem;color:var(--text2);letter-spacing:0.12em;text-transform:uppercase;flex:1;}
+.bt-vals{font-family:var(--font-d);font-size:0.95rem;color:var(--text);}
+.bt-delta{font-family:var(--font-d);font-size:1rem;color:var(--text);min-width:60px;text-align:right;}
+.bt-delta.good{color:var(--green);}
+.bt-delta.up{color:var(--accent);}
+.bt-delta.flat{color:var(--text3);}
+.wb-trend-grid{display:flex;flex-direction:column;gap:0.6rem;}
+.wb-trend-col{display:flex;flex-direction:column;gap:0.25rem;}
+.wb-trend-label{font-family:var(--font-m);font-size:0.55rem;letter-spacing:0.2em;text-transform:uppercase;}
+.wb-trend-bars{height:60px;}
+.fl-row{display:flex;gap:0.5rem;padding:0.4rem 0.55rem;background:var(--bg);border:1px solid var(--border);border-left:3px solid var(--red);font-family:var(--font-m);font-size:0.7rem;color:var(--text);align-items:baseline;}
+.fl-day{color:var(--red);font-family:var(--font-d);font-size:0.9rem;letter-spacing:0.08em;flex-shrink:0;}
+.fl-reason{color:var(--text2);letter-spacing:0.05em;line-height:1.5;}
+

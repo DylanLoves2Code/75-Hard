@@ -2,6 +2,9 @@
 import { TOTAL } from './constants.js';
 import { getDayData, isDayComplete, calcCurrentDay, calcStreak, countCompleteDays } from './state.js';
 import { getSettings, lbsToKg } from './settings.js';
+import { getMeasurementsDiff } from './measurements.js';
+import { buildWellbeingTrend } from './wellbeing.js';
+import { getFailureLog } from './failure.js';
 
 /**
  * Render the stats overview cards and bar charts from saved state.
@@ -71,6 +74,171 @@ export function renderStats(s){
   renderBarChart('completion-chart', buildWeeklyCompletionData(s), '#ff3c00', v=>`${v}%`);
   renderBarChart('weight-chart', buildMetricData(s,'weight'), '#f5c400', v=>`${v}`);
   renderBarChart('sleep-chart', buildMetricData(s,'sleep'), '#d500f9', v=>`${v}h`);
+
+  // v4 deeper-tracking sub-sections.
+  renderBodyTransformation(s);
+  renderWellbeingTrend(s);
+  renderWorkoutBreakdown(s);
+  renderFailureLog(s);
+}
+
+/**
+ * Render the BODY TRANSFORMATION card on the Stats tab. Shows
+ * first → last measurement delta per metric. Hides itself entirely
+ * when no metric has ≥ 2 logged days.
+ * @param {import('./state.js').State} s
+ */
+function renderBodyTransformation(s){
+  const host = document.getElementById('stats-body-transform');
+  if(!host) return;
+  const diff = getMeasurementsDiff(s);
+  if(!diff.length){
+    host.innerHTML = '';
+    return;
+  }
+  const fmt = (n) => (n > 0 ? '+' + n : '' + n);
+  const rows = diff.map(d => {
+    const cls = d.delta < 0 ? 'good' : (d.delta > 0 ? 'up' : 'flat');
+    return `
+      <div class="bt-row">
+        <span class="bt-label">${d.label}</span>
+        <span class="bt-vals">${d.first.toFixed(1)} → ${d.last.toFixed(1)}</span>
+        <span class="bt-delta ${cls}">${fmt(d.delta)} in</span>
+      </div>`;
+  }).join('');
+  host.innerHTML = `
+    <div class="chart-title">// BODY TRANSFORMATION</div>
+    <div class="bt-list">${rows}</div>
+  `;
+}
+
+/**
+ * Render the 7-day rolling-average wellbeing mini-chart trio.
+ * Hides itself when no day has wellbeing data.
+ * @param {import('./state.js').State} s
+ */
+function renderWellbeingTrend(s){
+  const host = document.getElementById('stats-wellbeing');
+  if(!host) return;
+  const series = [
+    {key:'mood',       label:'MOOD',       color:'#f5c400'},
+    {key:'energy',     label:'ENERGY',     color:'#00e676'},
+    {key:'discipline', label:'DISCIPLINE', color:'#ff3c00'},
+  ].map(d => ({...d, data: buildWellbeingTrend(s, d.key)}));
+  const anyData = series.some(d => d.data.length > 0);
+  if(!anyData){
+    host.innerHTML = '';
+    return;
+  }
+  host.innerHTML = `
+    <div class="chart-title">// WELLBEING TREND — 7-DAY ROLLING AVG (1-5)</div>
+    <div class="wb-trend-grid">
+      ${series.map(s2 => `
+        <div class="wb-trend-col">
+          <div class="wb-trend-label" style="color:${s2.color}">${s2.label}</div>
+          <div class="chart-bars wb-trend-bars" id="wb-trend-${s2.key}"></div>
+        </div>`).join('')}
+    </div>
+  `;
+  series.forEach(d => {
+    renderBarChartFixed('wb-trend-'+d.key, d.data, d.color, v => v.toFixed(1), 5);
+  });
+}
+
+/**
+ * Render the WORKOUT BREAKDOWN card — top 3 most-frequent
+ * type+location combinations across the challenge. Each w1 and w2
+ * slot per day counts as one workout. Workouts with both type and
+ * location blank are ignored.
+ * @param {import('./state.js').State} s
+ */
+function renderWorkoutBreakdown(s){
+  const host = document.getElementById('stats-workout-breakdown');
+  if(!host) return;
+  const counts = new Map();
+  const today = calcCurrentDay();
+  for(let d = 1; d <= today; d++){
+    const dd = getDayData(s, d);
+    for(const slot of [1,2]){
+      const t = (dd['w'+slot+'type']||'').trim();
+      const l = (dd['w'+slot+'location']||'').trim();
+      if(!t && !l) continue;
+      const key = (t||'?') + ' @ ' + (l||'?');
+      counts.set(key, (counts.get(key)||0) + 1);
+    }
+  }
+  if(counts.size === 0){
+    host.innerHTML = '';
+    return;
+  }
+  const top = [...counts.entries()]
+    .sort((a,b) => b[1] - a[1])
+    .slice(0, 3);
+  const rows = top.map(([k,n]) =>
+    `<div class="wb-row"><span class="bt-label">${k}</span><span class="bt-delta">${n}</span></div>`,
+  ).join('');
+  host.innerHTML = `
+    <div class="chart-title">// WORKOUT BREAKDOWN — TOP 3</div>
+    <div class="bt-list">${rows}</div>
+  `;
+}
+
+/**
+ * Render the FAILURE LOG section — every day with a recorded reason.
+ * Hides itself when empty.
+ * @param {import('./state.js').State} s
+ */
+function renderFailureLog(s){
+  const host = document.getElementById('stats-failure-log');
+  if(!host) return;
+  const entries = getFailureLog(s);
+  if(!entries.length){
+    host.innerHTML = '';
+    return;
+  }
+  const rows = entries.map(e =>
+    `<div class="fl-row"><span class="fl-day">Day ${e.day}</span><span class="fl-reason">— ${escapeHtml(e.reason)}</span></div>`,
+  ).join('');
+  host.innerHTML = `
+    <div class="chart-title">// FAILURE LOG</div>
+    <div class="fl-list">${rows}</div>
+  `;
+}
+
+/**
+ * Light HTML escape for user-entered text rendered into innerHTML.
+ * @param {string} str
+ * @returns {string}
+ */
+function escapeHtml(str){
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+/**
+ * Bar-chart variant that uses a fixed maximum (rather than the data
+ * max) so e.g. wellbeing trends always render on a stable 1-5 axis.
+ * @param {string} containerId
+ * @param {{label:string,value:number}[]} data
+ * @param {string} color
+ * @param {(v:number)=>string} tipFn
+ * @param {number} max
+ */
+function renderBarChartFixed(containerId,data,color,tipFn,max){
+  const c=document.getElementById(containerId);if(!c)return;c.innerHTML='';
+  if(!data.length){c.innerHTML='<div style="font-family:var(--font-m);font-size:0.55rem;color:var(--text3);letter-spacing:0.1em;">No data yet</div>';return;}
+  const cap=Math.max(max,1);
+  data.forEach(d=>{
+    const bar=document.createElement('div');
+    bar.className='chart-bar';
+    const h=Math.max(2,Math.round((Math.min(d.value,cap)/cap)*60));
+    bar.style.height=h+'px';
+    bar.style.background=color;
+    bar.style.opacity='0.7';
+    bar.setAttribute('data-tip',d.label+': '+tipFn(d.value));
+    c.appendChild(bar);
+  });
 }
 
 /**

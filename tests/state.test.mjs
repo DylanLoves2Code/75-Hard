@@ -418,7 +418,11 @@ test('v3: migrate defaults existing book entries to nonfiction:true', () => {
   assert.equal(state.books[9].nonfiction, true);
 });
 
-test('v3: migrate is idempotent — already-v3 state passes through unchanged', () => {
+test('v3: migrate is idempotent at v3 only when CURRENT == 3 — at v4+ it advances', () => {
+  // The v3 -> v4 step now adds measurement/wellbeing/type/location/
+  // failureReason fields. So a v3 blob *will* be migrated forward; we
+  // assert that the migration is non-destructive of existing v3 data
+  // (diet name + outdoor flag survive) rather than a strict no-op.
   const raw = {
     version: 3,
     startDate: '2025-01-01',
@@ -428,9 +432,15 @@ test('v3: migrate is idempotent — already-v3 state passes through unchanged', 
     drinks: {}, books: {}, metrics: {}, notes: {},
   };
   const { state, migrated } = migrate(raw);
-  assert.equal(migrated, false);
+  assert.equal(migrated, true);
+  assert.equal(state.version, CURRENT_SCHEMA_VERSION);
   assert.equal(state.diet.name, 'Keto');
   assert.equal(state.days[1].w1outdoor, true);
+  // v4-added fields land with defaults.
+  assert.deepEqual(state.days[1].measurements, {});
+  assert.deepEqual(state.days[1].wellbeing, {mood:null,energy:null,discipline:null});
+  assert.equal(state.days[1].w1type, '');
+  assert.equal(state.days[1].failureReason, null);
 });
 
 test('v3: migrate walks undefined -> 3 (pre-versioned legacy state)', () => {
@@ -467,6 +477,99 @@ test('v3: isDayComplete accepts either dietAdherence or legacy calorie', () => {
     dietAdherence: false, calorie: false, w1: true, w2: true, read: true, water: true, photo: true,
   });
   assert.equal(isDayComplete(s, 3), false);
+});
+
+// --- v4 schema migration ---------------------------------------------------
+
+test('v4: migrate adds measurements / wellbeing / workout-type-location / failureReason on existing days', () => {
+  const raw = {
+    version: 3,
+    startDate: '2025-01-01',
+    name: 'X',
+    diet: { name: 'Paleo', customText: '' },
+    days: {
+      1: { dietAdherence: true, w1: true, w1outdoor: true },
+      2: { calorie: true },
+    },
+    drinks: {}, books: {}, metrics: {}, notes: {},
+  };
+  const { state, migrated } = migrate(raw);
+  assert.equal(migrated, true);
+  assert.equal(state.version, CURRENT_SCHEMA_VERSION);
+  // Each pre-existing day gains the new fields with safe defaults.
+  for(const k of ['1','2']){
+    const dd = state.days[k];
+    assert.deepEqual(dd.measurements, {});
+    assert.deepEqual(dd.wellbeing, {mood:null,energy:null,discipline:null});
+    assert.equal(dd.w1type, '');
+    assert.equal(dd.w1location, '');
+    assert.equal(dd.w2type, '');
+    assert.equal(dd.w2location, '');
+    assert.equal(dd.failureReason, null);
+  }
+  // v3 fields are not clobbered.
+  assert.equal(state.days[1].dietAdherence, true);
+  assert.equal(state.days[1].w1outdoor, true);
+});
+
+test('v4: migrate is idempotent — a v4 state walks through unchanged', () => {
+  const raw = {
+    version: 4,
+    startDate: '2025-01-01',
+    name: 'X',
+    diet: { name: 'Custom', customText: 'OMAD' },
+    days: {
+      1: {
+        dietAdherence: true,
+        measurements: {waist: 34.5, chest: 41.0},
+        wellbeing: {mood: 4, energy: 5, discipline: 3},
+        w1type: 'Run', w1location: 'Outdoor', w1outdoor: true,
+        w2type: 'Lift', w2location: 'Gym',
+        failureReason: '',
+      },
+    },
+    drinks: {}, books: {}, metrics: {}, notes: {},
+  };
+  const { state, migrated } = migrate(raw);
+  assert.equal(migrated, false);
+  assert.equal(state.version, CURRENT_SCHEMA_VERSION);
+  assert.deepEqual(state.days[1].measurements, {waist: 34.5, chest: 41.0});
+  assert.equal(state.days[1].wellbeing.mood, 4);
+  assert.equal(state.days[1].w1type, 'Run');
+  assert.equal(state.days[1].failureReason, '');
+});
+
+test('v4: migrate walks undefined -> 4 across the entire chain', () => {
+  // A pre-versioned legacy blob now walks undefined -> 2 -> 3 -> 4.
+  const raw = {
+    startDate: '2025-01-01',
+    name: 'OLDEST',
+    days: { 5: { calorie: true } },
+    drinks: {}, books: {}, metrics: {}, notes: {},
+  };
+  const { state, migrated } = migrate(raw);
+  assert.equal(migrated, true);
+  assert.equal(state.version, CURRENT_SCHEMA_VERSION);
+  // v3 fields landed.
+  assert.equal(state.days[5].dietAdherence, true);
+  assert.equal(state.days[5].w1outdoor, false);
+  assert.equal(state.diet.name, 'Custom');
+  // v4 fields landed.
+  assert.deepEqual(state.days[5].measurements, {});
+  assert.deepEqual(state.days[5].wellbeing, {mood:null,energy:null,discipline:null});
+  assert.equal(state.days[5].w1type, '');
+  assert.equal(state.days[5].w2location, '');
+  assert.equal(state.days[5].failureReason, null);
+});
+
+test('v4: defaultState exposes the v4 per-day defaults via getDayData', () => {
+  const s = defaultState('2025-01-01', 'X');
+  const dd = getDayData(s, 7);
+  assert.deepEqual(dd.measurements, {});
+  assert.deepEqual(dd.wellbeing, {mood:null,energy:null,discipline:null});
+  assert.equal(dd.w1type, '');
+  assert.equal(dd.w2location, '');
+  assert.equal(dd.failureReason, null);
 });
 
 // --- storage usage ---------------------------------------------------------
