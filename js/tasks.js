@@ -4,7 +4,7 @@ import { getState, saveState, savePhoto, getDayData, updateDayData, calcCurrentD
 import { checkCompletionAnimation } from './confetti.js';
 import { renderGrid } from './grid.js';
 import { renderGallery, openLightbox } from './photos.js';
-import { renderAll } from './main.js';
+import { emit } from './bus.js';
 
 /**
  * Render the six-task list into `containerId` for a given day.
@@ -47,7 +47,7 @@ export function renderTaskList(s,day,containerId,isToday){
           const d2=getDayData(s2,day);
           updateDayData(s2,day,{[t.key]:!d2[t.key]});
           saveState(s2);
-          if(isToday){checkCompletionAnimation(s2,day);renderAll(s2);}
+          if(isToday){checkCompletionAnimation(s2,day);emit('state:changed',s2);}
           else{renderTaskList(s2,day,containerId,false);renderGrid(s2);}
         };
         el.addEventListener('click',e=>{
@@ -132,7 +132,7 @@ function startEditLabel(el,t,day,containerId,isToday){
       const s2=getState();
       updateDayData(s2,day,{[t.key+'label']:newName});
       saveState(s2);
-      if(isToday){renderAll(s2);}
+      if(isToday){emit('state:changed',s2);}
       else{renderTaskList(s2,day,containerId,false);}
     } else {
       const span=document.createElement('span');
@@ -207,13 +207,13 @@ export function handlePhotoUpload(e){
     downscaleImage(ev.target.result).then(small=>{
       if(!savePhoto(day,small))return;
       const s=getState();updateDayData(s,day,{photo:true});saveState(s);
-      if(isToday){checkCompletionAnimation(s,day);renderAll(s);}
+      if(isToday){checkCompletionAnimation(s,day);emit('state:changed',s);}
       else{renderTaskList(s,day,containerId,false);renderGrid(s);renderGallery(s);}
     }).catch(err=>{
       console.warn('Photo downscale failed; storing raw image.',err);
       if(!savePhoto(day,ev.target.result))return;
       const s=getState();updateDayData(s,day,{photo:true});saveState(s);
-      if(isToday){checkCompletionAnimation(s,day);renderAll(s);}
+      if(isToday){checkCompletionAnimation(s,day);emit('state:changed',s);}
       else{renderTaskList(s,day,containerId,false);renderGrid(s);renderGallery(s);}
     });
   };

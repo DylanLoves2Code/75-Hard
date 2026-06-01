@@ -23,10 +23,13 @@ import { renderBooks, saveBookEntry } from './books.js';
 import { renderDrinksLog, logDrinks } from './drinks.js';
 import { closeModal, closeModalDirect } from './modal.js';
 import { exportData, confirmReset, cancelReset, executeReset } from './export.js';
+import { on } from './bus.js';
 
 /**
  * Re-render the entire app shell from the given state. This is the
- * one routine other modules call after mutating + saving state.
+ * top-level rerender — called once at boot and bound to the
+ * `state:changed` bus event so feature modules don't have to import
+ * it directly.
  * @param {import('./state.js').State} s
  * @returns {void}
  */
@@ -141,7 +144,33 @@ function wireStaticHandlers(){
   document.querySelector('#confirm-overlay .btn-cancel').addEventListener('click',cancelReset);
 }
 
+/**
+ * Wire bus subscriptions. Feature modules `emit()` after saving state;
+ * `main.js` owns the corresponding rerenders. Keeps downstream modules
+ * free of any `import { renderAll } from './main.js'` cycle.
+ * @returns {void}
+ */
+function wireBus(){
+  // Catch-all: full rerender. Mirrors the legacy `renderAll(s2)` calls.
+  on('state:changed', renderAll);
+
+  // Narrower buckets — opt-in for sites that know they only touched
+  // one slice of the UI. Today-only redraws (no grid/stats/gallery).
+  on('state:today', s => {
+    const day = calcCurrentDay();
+    renderTaskList(s, day, 'task-list', true);
+    renderWaterMeter(s, day);
+    renderMetricInputs(s, day);
+    renderNoteInput(s, day);
+  });
+  on('state:grid', renderGrid);
+  on('state:stats', renderStats);
+  on('state:gallery', renderGallery);
+  on('state:drinks', renderDrinksLog);
+}
+
 wireStaticHandlers();
+wireBus();
 boot();
 
 // PWA: register service worker on http/https only (skip file:// for local dev).

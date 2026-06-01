@@ -1,6 +1,7 @@
 /** @file Weekly drinks-intake log on the Drinks tab. */
 import { getState, saveState, calcCurrentWeek } from './state.js';
 import { showToast } from './toast.js';
+import { emit } from './bus.js';
 
 /**
  * Render the per-week drinks list. Weeks above 15 drinks are flagged.
@@ -28,5 +29,5 @@ export function logDrinks(){
   const val=parseInt(document.getElementById('drinks-input').value)||0;
   const week=calcCurrentWeek();
   const s=getState();s.drinks[week]=Math.max(0,Math.min(50,val));
-  saveState(s);renderDrinksLog(s);showToast('Week '+week+' logged');
+  saveState(s);emit('state:drinks',s);showToast('Week '+week+' logged');
 }
