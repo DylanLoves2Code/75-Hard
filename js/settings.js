@@ -27,6 +27,18 @@ import { showToast } from './toast.js';
  * @property {'auto'|'on'|'off'} reducedMotion 'auto' = honor the media query; 'on'/'off' force.
  * @property {boolean} forgetPhotosOnReset     Whether RESET also wipes the photo blobs.
  * @property {Array<{q:string,a:string}>} customQuotes  Extra user-supplied quotes appended to the pool.
+ * @property {'default'|'granted'|'denied'} notificationPermission  Last result of the Notifications
+ *                                            permission prompt (w4b). UI uses this to enable/disable
+ *                                            the REQUEST PERMISSION button.
+ * @property {boolean} enableReminders         Master toggle for the four daily notifications.
+ * @property {string}  reminderMorningWorkout  HH:MM 24-hour. Default 07:00.
+ * @property {string}  reminderWater           HH:MM 24-hour. Default 12:00.
+ * @property {string}  reminderPhoto           HH:MM 24-hour. Default 18:00.
+ * @property {string}  reminderTasksRemaining  HH:MM 24-hour. Default 21:00.
+ * @property {number}  streakWarnHour          Hour (0..23) past which an incomplete day shows the
+ *                                            red "tasks remaining" urgent banner. Default 21.
+ * @property {string}  icsWorkout1Time         HH:MM 24-hour default for Workout 1 in ICS export.
+ * @property {string}  icsWorkout2Time         HH:MM 24-hour default for Workout 2 in ICS export.
  */
 
 /** Defaults applied when a key is missing from the stored blob. @type {Settings} */
@@ -37,6 +49,18 @@ const DEFAULTS = Object.freeze({
   reducedMotion: 'auto',
   forgetPhotosOnReset: true,
   customQuotes: [],
+  // w4b: reminders
+  notificationPermission: 'default',
+  enableReminders: false,
+  reminderMorningWorkout: '07:00',
+  reminderWater: '12:00',
+  reminderPhoto: '18:00',
+  reminderTasksRemaining: '21:00',
+  // w4b: streak-at-risk threshold
+  streakWarnHour: 21,
+  // w4b: ICS export defaults
+  icsWorkout1Time: '06:00',
+  icsWorkout2Time: '17:00',
 });
 
 /**
@@ -135,6 +159,29 @@ export function serializeCustomQuotes(list){
   }).join('\n');
 }
 
+/** Helper: write to a DOM element if it exists. */
+function setIfPresent(id, fn){
+  const el = document.getElementById(id);
+  if(el) fn(el);
+}
+
+/**
+ * Reflect the current notification permission state into the settings
+ * panel — disables the REQUEST button when granted/denied (the OS will
+ * not re-prompt) and updates the inline status indicator.
+ * @returns {void}
+ */
+export function refreshNotificationPermissionUi(){
+  const perm = (typeof Notification !== 'undefined' && Notification.permission) || 'default';
+  setIfPresent('set-notif-permission-status', el => {
+    el.textContent = `// PERMISSION: ${perm.toUpperCase()}`;
+    el.dataset.perm = perm;
+  });
+  setIfPresent('set-notif-request', el => {
+    el.disabled = (perm === 'granted' || perm === 'denied');
+  });
+}
+
 /**
  * Show the settings modal, pre-filled from the current saved values.
  * @returns {void}
@@ -149,6 +196,18 @@ export function openSettings(){
   document.getElementById('set-reduced-motion').value = s.reducedMotion;
   document.getElementById('set-forget-photos').checked = !!s.forgetPhotosOnReset;
   document.getElementById('set-custom-quotes').value = serializeCustomQuotes(s.customQuotes);
+  // w4b: reminders
+  setIfPresent('set-enable-reminders', el => { el.checked = !!s.enableReminders; });
+  setIfPresent('set-rem-morning',      el => { el.value = s.reminderMorningWorkout; });
+  setIfPresent('set-rem-water',        el => { el.value = s.reminderWater; });
+  setIfPresent('set-rem-photo',        el => { el.value = s.reminderPhoto; });
+  setIfPresent('set-rem-tasks',        el => { el.value = s.reminderTasksRemaining; });
+  // w4b: streak warn hour
+  setIfPresent('set-streak-warn-hour', el => { el.value = s.streakWarnHour; });
+  // w4b: ICS defaults
+  setIfPresent('set-ics-w1', el => { el.value = s.icsWorkout1Time; });
+  setIfPresent('set-ics-w2', el => { el.value = s.icsWorkout2Time; });
+  refreshNotificationPermissionUi();
   overlay.classList.add('open');
 }
 
@@ -173,7 +232,35 @@ export function applySettingsFromModal(){
   const reducedMotion = (rmVal === 'on' || rmVal === 'off') ? rmVal : 'auto';
   const forgetPhotosOnReset = document.getElementById('set-forget-photos').checked;
   const customQuotes = parseCustomQuotes(document.getElementById('set-custom-quotes').value);
-  saveSettings({ confetti, quoteRotationSec, weightUnit, reducedMotion, forgetPhotosOnReset, customQuotes });
+
+  // w4b: reminders + streak + ICS
+  const readHHMM = (id, fallback) => {
+    const v = document.getElementById(id);
+    if(!v) return fallback;
+    const t = String(v.value || '').trim();
+    return /^([0-2]?\d):([0-5]\d)$/.test(t) ? t : fallback;
+  };
+  const enableReminders = !!(document.getElementById('set-enable-reminders') && document.getElementById('set-enable-reminders').checked);
+  const reminderMorningWorkout = readHHMM('set-rem-morning', DEFAULTS.reminderMorningWorkout);
+  const reminderWater          = readHHMM('set-rem-water',   DEFAULTS.reminderWater);
+  const reminderPhoto          = readHHMM('set-rem-photo',   DEFAULTS.reminderPhoto);
+  const reminderTasksRemaining = readHHMM('set-rem-tasks',   DEFAULTS.reminderTasksRemaining);
+  const swhEl = document.getElementById('set-streak-warn-hour');
+  let streakWarnHour = DEFAULTS.streakWarnHour;
+  if(swhEl){
+    const n = parseInt(swhEl.value, 10);
+    if(Number.isFinite(n)) streakWarnHour = Math.max(0, Math.min(23, n));
+  }
+  const icsWorkout1Time = readHHMM('set-ics-w1', DEFAULTS.icsWorkout1Time);
+  const icsWorkout2Time = readHHMM('set-ics-w2', DEFAULTS.icsWorkout2Time);
+
+  saveSettings({
+    confetti, quoteRotationSec, weightUnit, reducedMotion, forgetPhotosOnReset, customQuotes,
+    enableReminders,
+    reminderMorningWorkout, reminderWater, reminderPhoto, reminderTasksRemaining,
+    streakWarnHour,
+    icsWorkout1Time, icsWorkout2Time,
+  });
   closeSettings();
   showToast('Settings saved');
 }

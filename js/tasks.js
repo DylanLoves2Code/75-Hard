@@ -5,6 +5,94 @@ import { checkCompletionAnimation } from './confetti.js';
 import { renderGrid } from './grid.js';
 import { renderGallery, openLightbox } from './photos.js';
 import { emit } from './bus.js';
+import { formatDuration } from './timer.js';
+
+/**
+ * Per-workout-slot timer running state. Keyed by `${day}:${slot}` where
+ * slot is 'w1' or 'w2'. In-memory only — lost on reload by design (see
+ * the w4b spec: "running state is in-memory only").
+ *
+ * Each entry: `{ startedAt: number /* epoch ms *\/, intervalId: number,
+ * baseline: number /* seconds accumulated prior to this run *\/ }`.
+ * @type {Map<string, {startedAt:number,intervalId:number,baseline:number}>}
+ */
+const activeTimers = new Map();
+const timerKey = (day, slot) => `${day}:${slot}`;
+
+/**
+ * Current elapsed seconds for a (day, slot). If the timer is running,
+ * includes the in-flight wall-clock delta on top of the saved/baseline
+ * value; otherwise returns the persisted `dd[slot+'duration']`.
+ * @param {number} day
+ * @param {'w1'|'w2'} slot
+ * @returns {number}
+ */
+function currentElapsed(day, slot){
+  const k = timerKey(day, slot);
+  const t = activeTimers.get(k);
+  if(t){
+    return t.baseline + Math.floor((Date.now() - t.startedAt) / 1000);
+  }
+  const s = getState();
+  if(!s) return 0;
+  const dd = getDayData(s, day);
+  return Math.max(0, parseInt(dd[slot+'duration'], 10) || 0);
+}
+
+/**
+ * Repaint the `[ ⏱ MM:SS ]` button label without re-rendering the row.
+ * Called by the active interval once per second.
+ * @param {HTMLButtonElement} btn
+ * @param {number} day
+ * @param {'w1'|'w2'} slot
+ */
+function repaintTimerButton(btn, day, slot){
+  const running = activeTimers.has(timerKey(day, slot));
+  const elapsed = currentElapsed(day, slot);
+  btn.classList.toggle('running', running);
+  btn.setAttribute('aria-pressed', running ? 'true' : 'false');
+  btn.textContent = `[ ⏱ ${formatDuration(elapsed)} ]`;
+}
+
+/**
+ * Click handler for the workout-timer button. Toggles the in-memory
+ * stopwatch and, on stop, persists the accumulated `wNduration` seconds
+ * into state.
+ * @param {HTMLButtonElement} btn
+ * @param {number} day
+ * @param {'w1'|'w2'} slot
+ */
+function toggleTimer(btn, day, slot){
+  const k = timerKey(day, slot);
+  const running = activeTimers.has(k);
+  if(running){
+    const t = activeTimers.get(k);
+    clearInterval(t.intervalId);
+    activeTimers.delete(k);
+    const elapsed = t.baseline + Math.floor((Date.now() - t.startedAt) / 1000);
+    const s = getState();
+    if(s){
+      updateDayData(s, day, { [slot+'duration']: elapsed });
+      saveState(s);
+    }
+    repaintTimerButton(btn, day, slot);
+  } else {
+    const baseline = currentElapsed(day, slot);
+    const startedAt = Date.now();
+    const intervalId = setInterval(() => {
+      // The button may have been re-rendered off-screen between ticks
+      // (e.g. by an unrelated state:changed). Detect that and just stop
+      // updating — the next render will pick up the new label.
+      if(!btn.isConnected){
+        clearInterval(intervalId);
+        return;
+      }
+      repaintTimerButton(btn, day, slot);
+    }, 1000);
+    activeTimers.set(k, { startedAt, intervalId, baseline });
+    repaintTimerButton(btn, day, slot);
+  }
+}
 
 /** v4: dropdown options for the per-workout type + location selects. */
 const WORKOUT_TYPES = ['Lift','Run','Swim','Bike','Yoga','HIIT','Walk','Sport','Other'];
@@ -68,11 +156,16 @@ export function renderTaskList(s,day,containerId,isToday){
       const showOutdoor=t.customLabel&&!isFuture; // w1/w2 outdoor toggle
       // v4: workout-type + location selects, only on the w1/w2 rows.
       const showSelects=t.customLabel&&!isFuture;
+      // w4b: workout-1/2 stopwatch button. Today-only — past days don't
+      // get a live timer (the value is read-only via the saved duration).
+      const showTimer=t.customLabel&&isToday&&!isFuture;
+      const durationKey=t.key+'duration';
+      const savedDuration=showTimer?Math.max(0,parseInt(dd[durationKey],10)||0):0;
       // Rows that host an interactive EDIT/OUTDOOR/SELECT child must remain a div
       // (nested <button> inside <button> is invalid HTML, and a <select>
       // would also break the row click target). Otherwise promote to a
       // real <button> for native a11y semantics.
-      const useButton=!(showEdit||showOutdoor||showSelects);
+      const useButton=!(showEdit||showOutdoor||showSelects||showTimer);
       const el=document.createElement(useButton?'button':'div');
       if(useButton)el.type='button';
       el.className='task-item'+(done?' done':'')+(showSelects?' task-item-workout':'');
@@ -89,6 +182,7 @@ export function renderTaskList(s,day,containerId,isToday){
           <span class="task-label">${labelText}</span>
           ${showOutdoor?`<button type="button" class="btn-outdoor-toggle${outdoorOn?' on':''}" aria-label="Toggle outdoor for ${labelText}" aria-pressed="${outdoorOn?'true':'false'}">[ OUTDOOR ]</button>`:''}
           ${showEdit?`<button type="button" class="btn-edit-label" aria-label="Rename ${t.label}">[ EDIT ]</button>`:''}
+          ${showTimer?`<button type="button" class="btn-workout-timer" aria-label="Workout timer for ${labelText}" aria-pressed="false" data-tkey="${t.key}">[ ⏱ ${formatDuration(savedDuration)} ]</button>`:''}
         </div>
         ${showSelects?`
         <div class="task-row-selects">
@@ -128,6 +222,8 @@ export function renderTaskList(s,day,containerId,isToday){
           // v4: type + location selects must not toggle the task.
           if(e.target.closest('.task-select'))return;
           if(e.target.closest('.task-row-selects'))return;
+          // w4b: stopwatch button must not toggle the task.
+          if(e.target.closest('.btn-workout-timer'))return;
           activate();
         });
         if(!useButton){
@@ -159,6 +255,28 @@ export function renderTaskList(s,day,containerId,isToday){
             if(isToday){emit('state:changed',s2);}
             else{renderTaskList(s2,day,containerId,false);renderGrid(s2);}
           });
+        }
+        if(showTimer){
+          const timerBtn=el.querySelector('.btn-workout-timer');
+          if(timerBtn){
+            const slot=timerBtn.dataset.tkey;
+            // If a timer was already running for this (day, slot) before
+            // a rerender, re-attach the live tick to the new button.
+            const k=timerKey(day,slot);
+            if(activeTimers.has(k)){
+              const t=activeTimers.get(k);
+              clearInterval(t.intervalId);
+              t.intervalId=setInterval(()=>{
+                if(!timerBtn.isConnected){clearInterval(t.intervalId);return;}
+                repaintTimerButton(timerBtn,day,slot);
+              },1000);
+              repaintTimerButton(timerBtn,day,slot);
+            }
+            timerBtn.addEventListener('click',e=>{
+              e.stopPropagation();
+              toggleTimer(timerBtn,day,slot);
+            });
+          }
         }
         if(showSelects){
           el.querySelectorAll('.task-select').forEach(sel=>{

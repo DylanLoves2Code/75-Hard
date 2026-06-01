@@ -56,6 +56,10 @@ import { showToast } from './toast.js';
  * @property {?string} [failureReason] v4+ user-entered reason for an incomplete day, captured
  *                                     by the morning failure-log prompt. `null` = never asked,
  *                                     `''` = asked + skipped, non-empty string = logged.
+ * @property {number}  [w1duration]    v5+ Workout 1 timed duration in seconds. 0 = never timed.
+ *                                     Persisted by the inline stopwatch on the Today tab;
+ *                                     independent of the `w1` "done" toggle.
+ * @property {number}  [w2duration]    v5+ Workout 2 timed duration in seconds. 0 = never timed.
  */
 
 /**
@@ -88,13 +92,15 @@ const DAY_DEFAULTS=Object.freeze({
   wellbeing:Object.freeze({mood:null,energy:null,discipline:null}),
   w1type:'',w1location:'',w2type:'',w2location:'',
   failureReason:null,
+  // v5+ workout-timer durations (seconds). 0 = never timed.
+  w1duration:0,w2duration:0,
 });
 
 /**
  * The schema version this build of the app writes. Bumped whenever the
  * shape of stored state changes; {@link migrate} handles upgrades.
  */
-export const CURRENT_SCHEMA_VERSION = 4;
+export const CURRENT_SCHEMA_VERSION = 5;
 
 /**
  * Parse a "YYYY-MM-DD" string as a Date at LOCAL midnight (not UTC).
@@ -212,6 +218,26 @@ const MIGRATIONS=[
         }
       }
       s.version=4;
+    },
+  },
+  {
+    from:4,to:5,
+    run:(s)=>{
+      // v5: workout-timer durations.
+      //   - Adds per-day `w1duration` and `w2duration` (seconds). 0 = never
+      //     timed. The stopwatch lives on the Today tab next to each
+      //     customLabel workout row; the timer's running state is in-memory
+      //     only, but the elapsed total is persisted here when the user
+      //     stops the clock.
+      if(s.days&&typeof s.days==='object'){
+        for(const k in s.days){
+          const dd=s.days[k];
+          if(!dd||typeof dd!=='object')continue;
+          if(dd.w1duration===undefined)dd.w1duration=0;
+          if(dd.w2duration===undefined)dd.w2duration=0;
+        }
+      }
+      s.version=5;
     },
   },
 ];

@@ -2,12 +2,12 @@
  * @file Entry point — wires DOM handlers, boots the app, and exposes
  * the top-level {@link renderAll} routine used by other modules.
  */
-import { TOTAL } from './constants.js';
+import { TOTAL, TASKS } from './constants.js';
 import {
   getState, saveState, defaultState,
   isDayComplete, calcCurrentDay, calcCurrentWeek,
   calcStreak, countCompleteDays, getDateForDay, formatDate,
-  checkStorageUsage,
+  checkStorageUsage, getDayData,
 } from './state.js';
 import { applyTheme, toggleTheme } from './theme.js';
 import { startCountdown } from './countdown.js';
@@ -29,11 +29,16 @@ import {
   exportData, confirmReset, cancelReset, executeReset,
   pickImportFile, handleImportFile, executeImport, cancelImport,
   exportPhotosZip, pickPhotoZipFile, handlePhotoZipFile,
+  exportIcs,
 } from './export.js';
 import { on } from './bus.js';
 import {
   getSettings, openSettings, closeSettings, applySettingsFromModal,
+  refreshNotificationPermissionUi,
 } from './settings.js';
+import {
+  scheduleDailyReminders, requestPermission, testNotification,
+} from './notifications.js';
 import { renderReport } from './report.js';
 
 /**
@@ -74,6 +79,9 @@ export function renderAll(s){
   const banner=document.getElementById('complete-banner');
   const complete=isDayComplete(s,day);
   complete?banner.classList.add('visible'):banner.classList.remove('visible');
+  // w4b: streak-at-risk urgent banner. Shown only when the day is NOT
+  // complete and the clock has passed the configured warn-hour.
+  renderUrgentBanner(s,day);
   // Soft caveat: 75 Hard requires one outdoor workout/day. Surface a
   // yellow nudge in the complete banner when neither slot was outdoors.
   const caveatEl=document.getElementById('complete-caveat');
@@ -94,6 +102,106 @@ export function renderAll(s){
   renderStats(s);
   renderGallery(s);
   renderBooks(s);
+}
+
+/**
+ * Pretty-format a duration in milliseconds as "Hh Mm" or "Mm" — used by
+ * the streak-at-risk banner countdown to midnight.
+ * @param {number} ms
+ * @returns {string}
+ */
+function formatToMidnight(ms){
+  if(ms <= 0) return '0 minutes';
+  const totalMin = Math.floor(ms / 60000);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if(h <= 0) return `${m} minute${m===1?'':'s'}`;
+  if(m === 0) return `${h} hour${h===1?'':'s'}`;
+  return `${h} hour${h===1?'':'s'} ${m} minute${m===1?'':'s'}`;
+}
+
+/**
+ * Render (or hide) the red urgent "TASKS REMAINING" banner on Today.
+ *
+ * Visibility rules:
+ *   - hidden when the day is fully complete,
+ *   - hidden when the current local hour is < settings.streakWarnHour,
+ *   - otherwise visible with a list of incomplete-task chips and the
+ *     hours/minutes until midnight.
+ *
+ * Called from renderAll() and from the 60-second refresh interval so
+ * the countdown stays accurate without forcing a full state rerender.
+ *
+ * @param {import('./state.js').State} s
+ * @param {number} day
+ * @returns {void}
+ */
+export function renderUrgentBanner(s, day){
+  const banner = document.getElementById('urgent-banner');
+  if(!banner) return;
+  const day0 = day || calcCurrentDay();
+  const settings = getSettings();
+  const warnHour = Math.max(0, Math.min(23, parseInt(settings.streakWarnHour, 10) || 0));
+  const now = new Date();
+  const past = now.getHours() >= warnHour;
+  const complete = isDayComplete(s, day0);
+  if(complete || !past){
+    banner.classList.remove('visible');
+    return;
+  }
+  const dd = getDayData(s, day0);
+  const incomplete = [];
+  for(const t of TASKS){
+    const done = t.key === 'dietAdherence' ? (dd.dietAdherence || dd.calorie) : dd[t.key];
+    if(done) continue;
+    let labelText = t.label;
+    if(t.customLabel) labelText = dd[t.key+'label'] || t.label;
+    incomplete.push(labelText);
+  }
+  if(incomplete.length === 0){
+    banner.classList.remove('visible');
+    return;
+  }
+  const midnight = new Date(now);
+  midnight.setHours(24, 0, 0, 0);
+  const remaining = midnight.getTime() - now.getTime();
+  const sub = document.getElementById('urgent-sub');
+  const chips = document.getElementById('urgent-chips');
+  if(sub){
+    sub.textContent = `${incomplete.length} task${incomplete.length===1?'':'s'} left. ${formatToMidnight(remaining)} to midnight.`;
+  }
+  if(chips){
+    chips.innerHTML = '';
+    for(const name of incomplete){
+      const span = document.createElement('span');
+      span.className = 'urgent-chip';
+      span.textContent = `[ ${name} ]`;
+      chips.appendChild(span);
+    }
+  }
+  // Hide the green day-complete banner just in case both ended up
+  // visible at once (e.g. a stale class lingering from a prior render).
+  const complBanner = document.getElementById('complete-banner');
+  if(complBanner) complBanner.classList.remove('visible');
+  banner.classList.add('visible');
+}
+
+/** Interval handle for the 60-second urgent-banner re-evaluation. */
+let urgentTimerId = null;
+
+/**
+ * Start the urgent-banner refresh loop. Ticks every 60s — fine-grained
+ * enough that the "X minutes to midnight" text stays current, cheap
+ * enough not to bother with the existing countdown's 1Hz interval.
+ * @returns {void}
+ */
+function startUrgentTimer(){
+  if(urgentTimerId) clearInterval(urgentTimerId);
+  urgentTimerId = setInterval(() => {
+    const s = getState();
+    if(!s) return;
+    renderUrgentBanner(s, calcCurrentDay());
+  }, 60000);
 }
 
 function switchTab(id,btn){
@@ -172,6 +280,10 @@ function boot(){
     checkStorageUsage();
     // v4: one-time end-of-day failure-log prompt for yesterday, if incomplete.
     maybeShowFailurePrompt(s);
+    // w4b: install the day's reminder timeouts (no-op if disabled or
+    // permission not granted), and start the 60s urgent-banner refresh.
+    scheduleDailyReminders();
+    startUrgentTimer();
   }
 }
 
@@ -195,6 +307,18 @@ function wireStaticHandlers(){
   document.getElementById('settings-overlay').addEventListener('click',e=>{
     if(e.target===document.getElementById('settings-overlay'))closeSettings();
   });
+  // w4b: notification permission + test buttons inside the settings modal.
+  const notifReq=document.getElementById('set-notif-request');
+  if(notifReq){
+    notifReq.addEventListener('click',()=>{
+      requestPermission().then(()=>{
+        refreshNotificationPermissionUi();
+        scheduleDailyReminders();
+      });
+    });
+  }
+  const notifTest=document.getElementById('set-notif-test');
+  if(notifTest)notifTest.addEventListener('click',testNotification);
 
   document.querySelectorAll('.app-tabs .tab-btn').forEach(btn=>{
     const id=btn.dataset.tab;
@@ -214,6 +338,8 @@ function wireStaticHandlers(){
   document.getElementById('btn-import-data').addEventListener('click',pickImportFile);
   document.getElementById('btn-export-photos').addEventListener('click',exportPhotosZip);
   document.getElementById('btn-import-photos').addEventListener('click',pickPhotoZipFile);
+  const icsBtn=document.getElementById('btn-export-ics');
+  if(icsBtn)icsBtn.addEventListener('click',exportIcs);
   document.getElementById('import-file-input').addEventListener('change',handleImportFile);
   document.getElementById('import-zip-input').addEventListener('change',handlePhotoZipFile);
   document.querySelector('#tab-export .btn-reset-full').addEventListener('click',confirmReset);
@@ -265,6 +391,9 @@ function wireBus(){
   // rotation re-subscribes to this event in startQuoteRotation.
   on('settings:changed', () => {
     applyReducedMotionClass();
+    // w4b: reminder + warn-hour settings — re-install the day's reminder
+    // schedule and refresh the urgent banner. Safe to call when disabled.
+    scheduleDailyReminders();
     const s = getState();
     if(s) renderAll(s);
   });

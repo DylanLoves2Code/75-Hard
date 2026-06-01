@@ -124,6 +124,18 @@
       </div>
     </div>
 
+    <!-- STREAK-AT-RISK URGENT BANNER (w4b) — shown when it's past the
+         configured warn-hour and the current day still has incomplete
+         tasks. Mutually exclusive with #complete-banner. -->
+    <div class="urgent-banner" id="urgent-banner" aria-live="polite">
+      <div class="urgent-icon">⚠</div>
+      <div class="urgent-text">
+        <div class="urgent-title">TASKS REMAINING</div>
+        <div class="urgent-sub" id="urgent-sub"></div>
+        <div class="urgent-chips" id="urgent-chips"></div>
+      </div>
+    </div>
+
     <div class="section">
       <div class="section-title">OBJECTIVES</div>
       <div class="task-list" id="task-list"></div>
@@ -277,6 +289,7 @@
       <button class="btn-export" id="btn-import-data">⬆ IMPORT DATA</button>
       <button class="btn-export" id="btn-export-photos">⬇ EXPORT PHOTOS (ZIP)</button>
       <button class="btn-export" id="btn-import-photos">⬆ IMPORT PHOTOS (ZIP)</button>
+      <button class="btn-export" id="btn-export-ics">📅 DOWNLOAD CALENDAR (.ics)</button>
       <button class="btn-print-report" id="btn-print-report">🖨 PRINT REPORT</button>
       <input type="file" id="import-file-input" accept=".json,application/json" style="display:none;">
       <input type="file" id="import-zip-input" accept=".zip,application/zip" style="display:none;">
@@ -405,6 +418,87 @@
           <span class="settings-name">// CUSTOM QUOTES — one per line, format: "quote" — author</span>
         </label>
         <textarea class="settings-textarea" id="set-custom-quotes" placeholder='"Do hard things." — Anonymous'></textarea>
+      </div>
+
+      <!-- REMINDERS (w4b) -->
+      <div class="settings-section-divider">// REMINDERS</div>
+
+      <div class="settings-row settings-row-block">
+        <div class="settings-label">
+          <span class="settings-name">Browser Notifications</span>
+          <span class="settings-hint">// In-page reminders. Foreground-only — closing the tab cancels them.</span>
+        </div>
+        <div class="settings-notif-row">
+          <button type="button" class="btn-sm" id="set-notif-request">REQUEST PERMISSION</button>
+          <span class="settings-hint" id="set-notif-permission-status">// PERMISSION: DEFAULT</span>
+          <button type="button" class="btn-sm" id="set-notif-test">TEST</button>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <label class="settings-label" for="set-enable-reminders">
+          <span class="settings-name">Enable Reminders</span>
+          <span class="settings-hint">// Master toggle for the four daily check-ins below</span>
+        </label>
+        <input type="checkbox" class="settings-check" id="set-enable-reminders">
+      </div>
+
+      <div class="settings-row">
+        <label class="settings-label" for="set-rem-morning">
+          <span class="settings-name">Morning Workout</span>
+          <span class="settings-hint">// Default 07:00</span>
+        </label>
+        <input type="time" class="settings-input" id="set-rem-morning" step="60">
+      </div>
+
+      <div class="settings-row">
+        <label class="settings-label" for="set-rem-water">
+          <span class="settings-name">Water Check-in</span>
+          <span class="settings-hint">// Default 12:00 — body shows your current oz progress</span>
+        </label>
+        <input type="time" class="settings-input" id="set-rem-water" step="60">
+      </div>
+
+      <div class="settings-row">
+        <label class="settings-label" for="set-rem-photo">
+          <span class="settings-name">Evening Photo</span>
+          <span class="settings-hint">// Default 18:00</span>
+        </label>
+        <input type="time" class="settings-input" id="set-rem-photo" step="60">
+      </div>
+
+      <div class="settings-row">
+        <label class="settings-label" for="set-rem-tasks">
+          <span class="settings-name">End-of-Day Tasks-Remaining</span>
+          <span class="settings-hint">// Default 21:00</span>
+        </label>
+        <input type="time" class="settings-input" id="set-rem-tasks" step="60">
+      </div>
+
+      <div class="settings-row">
+        <label class="settings-label" for="set-streak-warn-hour">
+          <span class="settings-name">Streak-at-Risk Hour</span>
+          <span class="settings-hint">// Hour (0-23) when red banner replaces day-complete. Default 21</span>
+        </label>
+        <input type="number" class="settings-input" id="set-streak-warn-hour" min="0" max="23" step="1">
+      </div>
+
+      <div class="settings-section-divider">// CALENDAR EXPORT</div>
+
+      <div class="settings-row">
+        <label class="settings-label" for="set-ics-w1">
+          <span class="settings-name">ICS Workout 1 Time</span>
+          <span class="settings-hint">// Default 06:00 — used by DOWNLOAD CALENDAR (.ics)</span>
+        </label>
+        <input type="time" class="settings-input" id="set-ics-w1" step="60">
+      </div>
+
+      <div class="settings-row">
+        <label class="settings-label" for="set-ics-w2">
+          <span class="settings-name">ICS Workout 2 Time</span>
+          <span class="settings-hint">// Default 17:00</span>
+        </label>
+        <input type="time" class="settings-input" id="set-ics-w2" step="60">
       </div>
     </div>
 
