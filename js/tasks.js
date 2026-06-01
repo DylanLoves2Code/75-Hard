@@ -1,6 +1,6 @@
 /** @file Task list rendering, label editing, and photo upload. */
 import { TASKS, photoKey } from './constants.js';
-import { getState, saveState, getDayData, updateDayData, calcCurrentDay } from './state.js';
+import { getState, saveState, savePhoto, getDayData, updateDayData, calcCurrentDay } from './state.js';
 import { checkCompletionAnimation } from './confetti.js';
 import { renderGrid } from './grid.js';
 import { renderGallery, openLightbox } from './photos.js';
@@ -151,9 +151,49 @@ function startEditLabel(el,t,day,containerId,isToday){
 }
 
 /**
- * <input type="file"> change handler that reads the chosen image
- * as a data URL, stores it under `photoKey(day)`, and marks the day's
- * photo task complete.
+ * Downscale a data-URL image to a JPEG sized so the longer edge is at
+ * most `maxEdge` pixels, preserving aspect ratio.
+ *
+ * Used to shrink raw camera photos (typically 3–5 MB on modern phones)
+ * before stashing in localStorage. A 1024-edge JPEG at q=0.85 lands
+ * around 100–200 KB for typical progress shots.
+ *
+ * @param {string} dataUrl  Source data URL (any image MIME the browser decodes).
+ * @param {number} [maxEdge=1024]  Max length of the longer image edge.
+ * @param {number} [quality=0.85]  JPEG quality in [0,1] passed to toDataURL.
+ * @returns {Promise<string>}  A `data:image/jpeg;base64,...` URL.
+ */
+export function downscaleImage(dataUrl,maxEdge=1024,quality=0.85){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.onload=()=>{
+      const w=img.naturalWidth||img.width;
+      const h=img.naturalHeight||img.height;
+      const longest=Math.max(w,h);
+      const scale=longest>maxEdge?maxEdge/longest:1;
+      const tw=Math.max(1,Math.round(w*scale));
+      const th=Math.max(1,Math.round(h*scale));
+      const canvas=document.createElement('canvas');
+      canvas.width=tw;canvas.height=th;
+      const ctx=canvas.getContext('2d');
+      ctx.drawImage(img,0,0,tw,th);
+      try{
+        resolve(canvas.toDataURL('image/jpeg',quality));
+      }catch(err){
+        reject(err);
+      }
+    };
+    img.onerror=()=>reject(new Error('Image decode failed'));
+    img.src=dataUrl;
+  });
+}
+
+/**
+ * <input type="file"> change handler that reads the chosen image,
+ * downscales it (see {@link downscaleImage}), stores the downscaled
+ * data URL under `photoKey(day)`, and marks the day's photo task
+ * complete. If localStorage rejects the write (quota), the photo task
+ * is NOT marked done.
  * @param {Event} e
  * @returns {void}
  */
@@ -164,10 +204,18 @@ export function handlePhotoUpload(e){
   const isToday=e.target.dataset.istoday==='true';
   const reader=new FileReader();
   reader.onload=ev=>{
-    localStorage.setItem(photoKey(day),ev.target.result);
-    const s=getState();updateDayData(s,day,{photo:true});saveState(s);
-    if(isToday){checkCompletionAnimation(s,day);renderAll(s);}
-    else{renderTaskList(s,day,containerId,false);renderGrid(s);renderGallery(s);}
+    downscaleImage(ev.target.result).then(small=>{
+      if(!savePhoto(day,small))return;
+      const s=getState();updateDayData(s,day,{photo:true});saveState(s);
+      if(isToday){checkCompletionAnimation(s,day);renderAll(s);}
+      else{renderTaskList(s,day,containerId,false);renderGrid(s);renderGallery(s);}
+    }).catch(err=>{
+      console.warn('Photo downscale failed; storing raw image.',err);
+      if(!savePhoto(day,ev.target.result))return;
+      const s=getState();updateDayData(s,day,{photo:true});saveState(s);
+      if(isToday){checkCompletionAnimation(s,day);renderAll(s);}
+      else{renderTaskList(s,day,containerId,false);renderGrid(s);renderGallery(s);}
+    });
   };
   reader.readAsDataURL(file);
 }

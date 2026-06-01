@@ -7,6 +7,7 @@ import {
   getState, saveState, defaultState,
   isDayComplete, calcCurrentDay, calcCurrentWeek,
   calcStreak, countCompleteDays, getDateForDay, formatDate,
+  checkStorageUsage,
 } from './state.js';
 import { applyTheme, toggleTheme } from './theme.js';
 import { startCountdown } from './countdown.js';
@@ -105,6 +106,7 @@ function boot(){
     renderAll(s);
     startCountdown(s);
     startQuoteRotation(s);
+    checkStorageUsage();
   }
 }
 

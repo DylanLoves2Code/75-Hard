@@ -1,4 +1,6 @@
 /** @file Live countdown to the end of the 75-day challenge. */
+import { parseLocalDate } from './state.js';
+
 let countdownInterval=null;
 
 /**
@@ -7,7 +9,7 @@ let countdownInterval=null;
  * @returns {void}
  */
 export function updateCountdown(s){
-  const start=new Date(s.startDate);start.setHours(0,0,0,0);
+  const start=parseLocalDate(s.startDate);
   const end=new Date(start);end.setDate(end.getDate()+75);
   const now=new Date();
   const diff=end-now;

@@ -20,6 +20,7 @@ export default [
         localStorage: 'readonly',
         sessionStorage: 'readonly',
         FileReader: 'readonly',
+        Image: 'readonly',
         Blob: 'readonly',
         URL: 'readonly',
         alert: 'readonly',

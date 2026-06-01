@@ -18,20 +18,27 @@ globalThis.localStorage = {
   clear: () => { memStore.clear(); },
 };
 
+// js/state.js imports js/toast.js, which uses document. Stub it.
+globalThis.document = {
+  getElementById: () => null,
+  createElement: () => ({ style: {}, setAttribute() {}, appendChild() {} }),
+  body: { appendChild() {} },
+};
+
 // Import AFTER the polyfill is in place.
 const {
   defaultState, getDayData, updateDayData, isDayComplete,
   calcCurrentDay, calcCurrentWeek, calcStreak, countCompleteDays,
   formatDate, getDateForDay, getState, saveState,
+  parseLocalDate, migrate, CURRENT_SCHEMA_VERSION,
+  getStorageUsageBytes,
 } = await import('../js/state.js');
-const { TOTAL, STORAGE_KEY } = await import('../js/constants.js');
+const { TOTAL, STORAGE_KEY, photoKey } = await import('../js/constants.js');
 
 // --- helpers ---------------------------------------------------------------
-// state.js parses startDate via `new Date(s.startDate)` then `setHours(0,0,0,0)`.
-// A "YYYY-MM-DD" literal parses as UTC midnight; in a negative-offset timezone
-// that shifts to the previous local date. To make day-arithmetic predictable
-// across timezones we build the date string from local-date components and
-// then read back what calcCurrentDay() actually computes.
+// startDate is now parsed via parseLocalDate (local-midnight), so
+// constructing a date string from local components gives stable arithmetic
+// across timezones.
 function isoDaysAgo(n) {
   const d = new Date();
   d.setDate(d.getDate() - n);
@@ -48,20 +55,12 @@ function freshState(start, name = 'TEST') {
   return s;
 }
 
-// Start a state such that calcCurrentDay() returns exactly `n`.
-// Probes calcCurrentDay() and shifts the start date until it matches —
-// dodges any local-vs-UTC parsing skew for the start date.
-//   bigger offset (older start) -> larger computed day
-//   smaller offset (newer start) -> smaller computed day
+// With local-midnight startDate parsing, a startDate of `isoDaysAgo(n-1)`
+// puts calcCurrentDay() at exactly `n` regardless of timezone — no
+// probing needed.
 function freshStateAtDay(n, name = 'TEST') {
-  let offset = n - 1;
-  for (let i = 0; i < 10; i++) {
-    freshState(isoDaysAgo(offset), name);
-    const d = calcCurrentDay();
-    if (d === n) return getState();
-    offset -= (d - n);
-  }
-  throw new Error(`Could not pin calcCurrentDay to ${n}; got ${calcCurrentDay()}`);
+  freshState(isoDaysAgo(n - 1), name);
+  return getState();
 }
 
 function markComplete(s, day, opts = {}) {
@@ -75,6 +74,7 @@ function markComplete(s, day, opts = {}) {
 
 test('defaultState returns the expected shape', () => {
   const s = defaultState('2025-01-01', 'SOLDIER');
+  assert.equal(s.version, CURRENT_SCHEMA_VERSION);
   assert.equal(s.startDate, '2025-01-01');
   assert.equal(s.name, 'SOLDIER');
   assert.deepEqual(s.days, {});
@@ -238,11 +238,9 @@ test('formatDate is stable for a known date', () => {
 });
 
 test('getDateForDay advances by exactly (day - 1) calendar days', () => {
-  // We avoid asserting absolute calendar dates because the app stores
-  // startDate as "YYYY-MM-DD", which Date() parses as UTC — leading to
-  // off-by-one local-date results in non-UTC zones. We instead verify
-  // the *relative* offset, which is what the production code uses for
-  // labeling each day.
+  // Now that parseLocalDate is used, we can assert absolute local
+  // calendar dates too. The offset check is still the contract callers
+  // rely on for labeling each day.
   freshState('2025-03-10');
   const d1 = getDateForDay(1);
   const d8 = getDateForDay(8);
@@ -250,6 +248,10 @@ test('getDateForDay advances by exactly (day - 1) calendar days', () => {
   assert.equal(diff, 7);
   const d75 = getDateForDay(75);
   assert.equal(Math.round((d75 - d1) / 86400000), 74);
+  // Absolute: day 1 should be March 10, 2025 in local time.
+  assert.equal(d1.getFullYear(), 2025);
+  assert.equal(d1.getMonth(), 2); // March
+  assert.equal(d1.getDate(), 10);
 });
 
 test('getState / saveState round-trip via localStorage', () => {
@@ -263,4 +265,95 @@ test('getState / saveState round-trip via localStorage', () => {
   assert.equal(loaded.startDate, '2025-01-01');
   assert.equal(loaded.name, 'NAME');
   assert.equal(loaded.days[1].calorie, true);
+});
+
+// --- timezone-stable day arithmetic ----------------------------------------
+
+test('parseLocalDate yields local midnight, not UTC midnight', () => {
+  const d = parseLocalDate('2025-06-15');
+  assert.equal(d.getFullYear(), 2025);
+  assert.equal(d.getMonth(), 5);
+  assert.equal(d.getDate(), 15);
+  assert.equal(d.getHours(), 0);
+  assert.equal(d.getMinutes(), 0);
+});
+
+test('calcCurrentDay returns 1 when startDate is today (local), regardless of TZ', () => {
+  // Build today's local date as the YYYY-MM-DD literal stored by the
+  // app. With the old UTC-parsing bug, this could return 0 (and clamp
+  // to 1, hiding the bug) OR 2 depending on hour/timezone. The fix
+  // makes day-1-on-day-1 work everywhere.
+  const today = new Date();
+  const y = today.getFullYear();
+  const m = String(today.getMonth() + 1).padStart(2, '0');
+  const da = String(today.getDate()).padStart(2, '0');
+  freshState(`${y}-${m}-${da}`);
+  assert.equal(calcCurrentDay(), 1);
+});
+
+test('calcCurrentDay returns 2 when startDate is yesterday (local), regardless of TZ', () => {
+  const y = new Date();
+  y.setDate(y.getDate() - 1);
+  const ys = `${y.getFullYear()}-${String(y.getMonth() + 1).padStart(2, '0')}-${String(y.getDate()).padStart(2, '0')}`;
+  freshState(ys);
+  assert.equal(calcCurrentDay(), 2);
+});
+
+// --- schema versioning + migration -----------------------------------------
+
+test('defaultState writes version = CURRENT_SCHEMA_VERSION', () => {
+  const s = defaultState('2025-01-01', 'X');
+  assert.equal(s.version, CURRENT_SCHEMA_VERSION);
+});
+
+test('migrate stamps version on pre-versioned (undefined) state and marks migrated', () => {
+  const raw = { startDate: '2025-01-01', name: 'OLD', days: {}, drinks: {}, books: {}, metrics: {}, notes: {} };
+  const { state, migrated } = migrate(raw);
+  assert.equal(migrated, true);
+  assert.equal(state.version, CURRENT_SCHEMA_VERSION);
+  assert.equal(state.startDate, '2025-01-01');
+});
+
+test('migrate is a no-op on a current-version state', () => {
+  const raw = defaultState('2025-01-01', 'NEW');
+  const { migrated, state } = migrate(raw);
+  assert.equal(migrated, false);
+  assert.equal(state.version, CURRENT_SCHEMA_VERSION);
+});
+
+test('migrate handles null/undefined gracefully', () => {
+  const { state: a, migrated: m1 } = migrate(null);
+  assert.equal(a, null);
+  assert.equal(m1, false);
+  const { state: b, migrated: m2 } = migrate(undefined);
+  assert.equal(b, undefined);
+  assert.equal(m2, false);
+});
+
+test('getState migrates a pre-versioned saved blob and persists the upgrade', () => {
+  memStore.clear();
+  // Write a "v1"-style blob directly (no version field).
+  const legacy = { startDate: '2025-01-01', name: 'LEGACY', days: {}, drinks: {}, books: {}, metrics: {}, notes: {} };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(legacy));
+  const loaded = getState();
+  assert.equal(loaded.version, CURRENT_SCHEMA_VERSION);
+  // Persisted back?
+  const onDisk = JSON.parse(localStorage.getItem(STORAGE_KEY));
+  assert.equal(onDisk.version, CURRENT_SCHEMA_VERSION);
+  assert.equal(onDisk.name, 'LEGACY');
+});
+
+// --- storage usage ---------------------------------------------------------
+
+test('getStorageUsageBytes counts state JSON and photo blobs', () => {
+  memStore.clear();
+  const s = defaultState('2025-01-01', 'X');
+  saveState(s);
+  const baseline = getStorageUsageBytes();
+  assert.ok(baseline > 0, 'expected non-zero baseline');
+  // Add a fake photo and confirm usage increases.
+  const fakePhoto = 'data:image/jpeg;base64,' + 'A'.repeat(10000);
+  localStorage.setItem(photoKey(3), fakePhoto);
+  const after = getStorageUsageBytes();
+  assert.ok(after >= baseline + fakePhoto.length, 'photo bytes should be counted');
 });
