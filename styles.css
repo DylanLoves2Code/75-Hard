@@ -744,3 +744,32 @@ body.shared-view-mode{background:var(--bg);}
 .shared-back{margin-top:0.85rem;}
 .shared-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.65rem;margin-bottom:1.25rem;}
 .shared-view .section{padding:0;border:none;}
+
+/* v7 item 46: setup-screen pre-challenge prep checklist. */
+.setup-prep-section{border:1px solid var(--border2);border-left:3px solid var(--accent);background:var(--bg3);padding:0.85rem 1rem;margin-bottom:1.5rem;}
+.setup-prep-title{font-family:var(--font-m);font-size:0.65rem;letter-spacing:0.2em;color:var(--accent);text-transform:uppercase;margin-bottom:0.3rem;}
+.setup-prep-hint{font-family:var(--font-m);font-size:0.55rem;letter-spacing:0.12em;color:var(--text3);text-transform:uppercase;margin-bottom:0.75rem;}
+.setup-prep-row{display:flex;gap:0.55rem;align-items:center;padding:0.35rem 0;cursor:pointer;}
+.setup-prep-check{width:16px;height:16px;flex:0 0 auto;cursor:pointer;accent-color:var(--accent);}
+.setup-prep-label{font-family:var(--font-m);font-size:0.7rem;color:var(--text);letter-spacing:0.05em;}
+
+/* v7 item 46: pre-challenge prep card on the Stats tab. */
+.prep-card-list{display:flex;flex-direction:column;gap:0.35rem;margin-top:0.4rem;}
+.prep-card-row{display:flex;gap:0.65rem;align-items:center;font-family:var(--font-m);font-size:0.7rem;}
+.prep-card-row.checked .prep-card-mark{color:var(--green,#00e676);}
+.prep-card-row.unchecked .prep-card-mark{color:var(--text3);}
+.prep-card-mark{flex:0 0 90px;letter-spacing:0.1em;text-transform:uppercase;font-size:0.6rem;}
+.prep-card-label{color:var(--text2);}
+
+/* v7 item 47: Past Attempts archive list on the Export tab. */
+.archive-list{display:flex;flex-direction:column;gap:0.75rem;margin-top:0.5rem;}
+.archive-empty{font-family:var(--font-m);font-size:0.6rem;color:var(--text3);letter-spacing:0.15em;text-transform:uppercase;padding:0.5rem 0;}
+.archive-row{border:1px solid var(--border2);border-left:3px solid var(--accent);background:var(--bg3);padding:0.75rem 0.85rem;}
+.archive-row-head{display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.35rem;}
+.archive-row-name{font-family:var(--font-d);font-size:1.1rem;color:var(--accent);letter-spacing:0.05em;}
+.archive-row-range{font-family:var(--font-m);font-size:0.6rem;color:var(--text3);letter-spacing:0.12em;text-transform:uppercase;}
+.archive-row-stats{display:flex;flex-wrap:wrap;gap:0.75rem;font-family:var(--font-m);font-size:0.65rem;color:var(--text2);margin-bottom:0.5rem;}
+.archive-row-stats strong{color:var(--text);}
+.archive-row-actions{display:flex;gap:0.5rem;flex-wrap:wrap;}
+.archive-row-actions .btn-sm,.archive-row-actions .btn-row{flex:0 0 auto;}
+.archive-restore-btn[disabled]{opacity:0.4;cursor:not-allowed;}

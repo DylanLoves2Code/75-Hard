@@ -18,6 +18,7 @@ import { getSettings } from './settings.js';
 import { emit } from './bus.js';
 import { buildIcs } from './ics.js';
 import { generateShareUrl } from './share.js';
+import { archiveCurrent } from './history.js';
 
 /**
  * Build the 150-event .ics calendar from the current state + user
@@ -114,10 +115,21 @@ export function confirmReset(){document.getElementById('confirm-overlay').classL
 export function cancelReset(){document.getElementById('confirm-overlay').classList.remove('open');}
 
 /**
- * Erase saved state + all photos and return to the setup screen.
+ * Archive the current challenge into the past-attempts list and return
+ * to the setup screen for a fresh run. v7 changed this from a hard
+ * wipe to a non-destructive archive so users can build a history of
+ * multiple attempts (and restore one later from the Export tab).
+ *
+ * Photos still follow the `forgetPhotosOnReset` setting — archive
+ * entries carry summary stats, not photo blobs, so wiping them is a
+ * separate decision.
  * @returns {void}
  */
 export function executeReset(){
+  // Move the current active state into the archive first (carries the
+  // full state payload so it can be restored later from Past Attempts).
+  const current = getState();
+  if(current) archiveCurrent(current);
   localStorage.removeItem(STORAGE_KEY);
   // The `forgetPhotosOnReset` setting (default true) preserves the
   // legacy behavior. When unchecked, the user keeps their photo blobs
@@ -128,9 +140,33 @@ export function executeReset(){
   document.getElementById('confirm-overlay').classList.remove('open');
   document.getElementById('app').style.display='none';
   document.getElementById('setup-screen').classList.add('active');
+  // Reset the prep checkboxes for the new run.
+  document.querySelectorAll('.setup-prep-check').forEach(el => { el.checked = false; });
+  updateEngageButtonLabel();
   stopCountdown();
   stopQuoteRotation();
   resetAnimatedDay();
+}
+
+/**
+ * Recompute the setup-screen ENGAGE button label based on how many of
+ * the five prep boxes are checked. Called whenever a prep checkbox
+ * toggles and after a reset. Idempotent.
+ * @returns {void}
+ */
+export function updateEngageButtonLabel(){
+  const btn = document.getElementById('setup-engage-btn');
+  if(!btn) return;
+  const boxes = document.querySelectorAll('.setup-prep-check');
+  if(!boxes.length){ btn.textContent = 'ENGAGE CHALLENGE'; return; }
+  let checked = 0;
+  boxes.forEach(b => { if(b.checked) checked++; });
+  const total = boxes.length;
+  if(checked === 0 || checked === total){
+    btn.textContent = 'ENGAGE CHALLENGE';
+  } else {
+    btn.textContent = `ENGAGE — ${checked} OF ${total} READY`;
+  }
 }
 
 // ---------------------------------------------------------------------------

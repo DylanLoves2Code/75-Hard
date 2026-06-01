@@ -11,6 +11,14 @@ export const WATER_CUPS = 16;
 /** localStorage key for the main saved state JSON. */
 export const STORAGE_KEY = '75hard_v2';
 
+/**
+ * localStorage key for the archive of past challenges (v7+). The archive
+ * is a JSON array of past-attempt entries created when the user resets
+ * the active challenge — see {@link archiveCurrent} in js/history.js for
+ * the entry shape.
+ */
+export const STORAGE_KEY_ARCHIVE = '75hard_archive';
+
 /** localStorage key for the light/dark theme preference. */
 export const THEME_KEY = '75hard_theme';
 
