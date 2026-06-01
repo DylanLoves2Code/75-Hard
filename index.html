@@ -32,7 +32,33 @@
       <option value="Custom">Custom...</option>
     </select>
     <input type="text" id="setup-diet-custom" class="setup-input" placeholder="Custom diet name" style="display:none;">
-    <button class="btn-primary">ENGAGE CHALLENGE</button>
+
+    <div class="setup-prep-section">
+      <div class="setup-prep-title">// READINESS CHECK</div>
+      <div class="setup-prep-hint">// Optional — tick what's ready. Advisory only, not required to engage.</div>
+      <label class="setup-prep-row" for="setup-prep-diet">
+        <input type="checkbox" id="setup-prep-diet" class="setup-prep-check" data-prep-key="dietReady">
+        <span class="setup-prep-label">Diet chosen and stocked</span>
+      </label>
+      <label class="setup-prep-row" for="setup-prep-workouts">
+        <input type="checkbox" id="setup-prep-workouts" class="setup-prep-check" data-prep-key="workoutsScheduled">
+        <span class="setup-prep-label">Both daily workouts scheduled</span>
+      </label>
+      <label class="setup-prep-row" for="setup-prep-book">
+        <input type="checkbox" id="setup-prep-book" class="setup-prep-check" data-prep-key="bookReady">
+        <span class="setup-prep-label">First nonfiction book ready</span>
+      </label>
+      <label class="setup-prep-row" for="setup-prep-photo">
+        <input type="checkbox" id="setup-prep-photo" class="setup-prep-check" data-prep-key="photoLocation">
+        <span class="setup-prep-label">Photo location identified</span>
+      </label>
+      <label class="setup-prep-row" for="setup-prep-backup">
+        <input type="checkbox" id="setup-prep-backup" class="setup-prep-check" data-prep-key="backupOutdoor">
+        <span class="setup-prep-label">Backup outdoor workout plan for bad weather</span>
+      </label>
+    </div>
+
+    <button class="btn-primary" id="setup-engage-btn">ENGAGE CHALLENGE</button>
   </div>
 </div>
 
@@ -203,6 +229,9 @@
       <div class="section-title">PERFORMANCE STATS</div>
       <div class="stats-grid" id="stats-grid"></div>
 
+      <!-- v7: pre-challenge prep checklist snapshot. stats.js renders into this. -->
+      <div class="chart-wrap stats-subsection" id="stats-prep-card"></div>
+
       <!-- w5b: GitHub-style heatmap (15×5). stats.js renders into this. -->
       <div class="chart-wrap" id="stats-heatmap-wrap">
         <div class="chart-title">// 75-DAY HEATMAP</div>
@@ -356,9 +385,13 @@
       <input type="file" id="import-zip-input" accept=".zip,application/zip" style="display:none;">
       <div style="margin:1.5rem 0;border-top:1px solid var(--border);"></div>
       <div class="export-info" style="border-left-color:var(--red);color:var(--red);">
-        ⚠ DANGER ZONE — Resetting will permanently erase ALL data including photos.
+        ⚠ DANGER ZONE — Resetting archives the current challenge and returns you to setup. Photos follow the "Forget Photos on Reset" setting.
       </div>
       <button class="btn-reset-full">⚠ RESET CHALLENGE</button>
+
+      <div style="margin:1.5rem 0;border-top:1px solid var(--border);"></div>
+      <div class="section-title">PAST ATTEMPTS</div>
+      <div id="archive-list" class="archive-list"></div>
     </div>
   </div>
 
@@ -396,6 +429,18 @@
     <div class="confirm-btns">
       <button class="btn-danger">CONFIRM</button>
       <button class="btn-cancel">STAND DOWN</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESTORE-FROM-ARCHIVE CONFIRM (v7) -->
+<div class="confirm-overlay" id="restore-overlay">
+  <div class="confirm-box">
+    <div class="confirm-title">RESTORE PAST ATTEMPT?</div>
+    <div class="confirm-body" id="restore-confirm-body">This will replace your current challenge with the selected archived run. Your current state will be archived first.</div>
+    <div class="confirm-btns">
+      <button class="btn-danger" id="btn-restore-confirm">RESTORE</button>
+      <button class="btn-cancel" id="btn-restore-cancel">STAND DOWN</button>
     </div>
   </div>
 </div>

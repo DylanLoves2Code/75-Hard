@@ -83,6 +83,11 @@ import { showToast } from './toast.js';
  *                                                    not counted toward the 10-page rule).
  * @property {Object<string,{weight:?number,sleep:?number}>} metrics  Daily weight/sleep metrics.
  * @property {Object<string,string>} notes            Daily field notes (free text).
+ * @property {{dietReady:boolean,workoutsScheduled:boolean,bookReady:boolean,photoLocation:boolean,backupOutdoor:boolean}} [prep]
+ *                                                    v7+ pre-challenge "readiness check" advisory flags. All five
+ *                                                    default to `false` and the user may engage the challenge with
+ *                                                    any subset checked. Migrations stamp this on existing runs as
+ *                                                    five `false`s so older challenges show an empty prep card.
  */
 
 const DAY_DEFAULTS=Object.freeze({
@@ -104,7 +109,7 @@ const DAY_DEFAULTS=Object.freeze({
  * The schema version this build of the app writes. Bumped whenever the
  * shape of stored state changes; {@link migrate} handles upgrades.
  */
-export const CURRENT_SCHEMA_VERSION = 6;
+export const CURRENT_SCHEMA_VERSION = 7;
 
 /**
  * Parse a "YYYY-MM-DD" string as a Date at LOCAL midnight (not UTC).
@@ -264,6 +269,29 @@ const MIGRATIONS=[
       s.version=6;
     },
   },
+  {
+    from:6,to:7,
+    run:(s)=>{
+      // v7: pre-challenge prep checklist.
+      //   - Adds top-level `s.prep` with five advisory booleans, all
+      //     defaulted false. The user ticks them on the setup screen
+      //     before the challenge begins; they remain visible on the
+      //     Stats tab afterwards as a read-only "PRE-CHALLENGE PREP"
+      //     card. Migrating pre-v7 states preserves the user's
+      //     existing run with prep recorded as "not done" — the field
+      //     is advisory only, so this is non-destructive.
+      if(s.prep===undefined){
+        s.prep={
+          dietReady:false,
+          workoutsScheduled:false,
+          bookReady:false,
+          photoLocation:false,
+          backupOutdoor:false,
+        };
+      }
+      s.version=7;
+    },
+  },
 ];
 
 /**
@@ -403,15 +431,24 @@ export function checkStorageUsage(){
  * @param {{name:string,customText:string}} [diet] Optional diet selection.
  *   Defaults to `{name:'Custom',customText:''}` so {@link migrate} from
  *   pre-v3 states and the fresh setup path share the same shape.
+ * @param {Object} [prep] Optional pre-challenge prep checklist values
+ *   captured on the setup screen. All five booleans default to `false`.
  * @returns {State}
  */
-export function defaultState(start,name,diet){
+export function defaultState(start,name,diet,prep){
   return {
     version:CURRENT_SCHEMA_VERSION,
     startDate:start,
     name:name||'',
     diet:diet||{name:'Custom',customText:''},
     days:{},drinks:{},books:{},metrics:{},notes:{},
+    prep:prep||{
+      dietReady:false,
+      workoutsScheduled:false,
+      bookReady:false,
+      photoLocation:false,
+      backupOutdoor:false,
+    },
   };
 }
 

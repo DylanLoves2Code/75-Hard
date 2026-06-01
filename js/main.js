@@ -29,8 +29,11 @@ import {
   exportData, confirmReset, cancelReset, executeReset,
   pickImportFile, handleImportFile, executeImport, cancelImport,
   exportPhotosZip, pickPhotoZipFile, handlePhotoZipFile,
-  exportIcs, generateAndShowShareLink,
+  exportIcs, generateAndShowShareLink, updateEngageButtonLabel,
 } from './export.js';
+import {
+  renderArchiveView, restoreFromArchive,
+} from './history.js';
 import { parseShareFragment, renderSharedView } from './share.js';
 import {
   renderPartnersPanel, getPartners, addPartnerFromUrl, removePartner,
@@ -272,6 +275,23 @@ function switchTab(id,btn){
   btn.setAttribute('aria-selected','true');
   if(id==='stats'){const s=getState();renderStats(s);}
   if(id==='gallery'){const s=getState();renderGallery(s);}
+  if(id==='export'){renderArchiveList();}
+}
+
+/**
+ * Read the five prep checkboxes from the setup screen into a plain
+ * object matching `state.prep`. Missing inputs default to `false`.
+ * @returns {{dietReady:boolean,workoutsScheduled:boolean,bookReady:boolean,photoLocation:boolean,backupOutdoor:boolean}}
+ */
+function collectSetupPrep(){
+  const read = id => !!(document.getElementById(id) && document.getElementById(id).checked);
+  return {
+    dietReady:         read('setup-prep-diet'),
+    workoutsScheduled: read('setup-prep-workouts'),
+    bookReady:         read('setup-prep-book'),
+    photoLocation:     read('setup-prep-photo'),
+    backupOutdoor:     read('setup-prep-backup'),
+  };
 }
 
 function initChallenge(){
@@ -282,7 +302,8 @@ function initChallenge(){
   const dietCustom=document.getElementById('setup-diet-custom');
   const dietName=dietSelect?dietSelect.value:'Custom';
   const customText=dietName==='Custom'?(dietCustom?dietCustom.value.trim():''):'';
-  const s=defaultState(val,name,{name:dietName,customText});
+  const prep=collectSetupPrep();
+  const s=defaultState(val,name,{name:dietName,customText},prep);
   saveState(s);
   document.getElementById('setup-screen').classList.remove('active');
   document.getElementById('app').style.display='block';
@@ -407,6 +428,12 @@ function wireStaticHandlers(){
       dietCustom.style.display=dietSelect.value==='Custom'?'block':'none';
     });
   }
+  // v7 item 46: prep checkboxes drive the ENGAGE button's label so the
+  // user sees an "X of 5 READY" nudge as they tick boxes.
+  document.querySelectorAll('.setup-prep-check').forEach(box => {
+    box.addEventListener('change', updateEngageButtonLabel);
+  });
+  updateEngageButtonLabel();
   document.getElementById('theme-btn').addEventListener('click',toggleTheme);
 
   // Settings panel — header gear icon opens it; modal has save/cancel/close.
@@ -497,6 +524,79 @@ function wireStaticHandlers(){
 
   document.querySelector('#confirm-overlay .btn-danger').addEventListener('click',executeReset);
   document.querySelector('#confirm-overlay .btn-cancel').addEventListener('click',cancelReset);
+
+  // v7 item 47: restore-from-archive confirm overlay.
+  const restoreConfirmBtn=document.getElementById('btn-restore-confirm');
+  const restoreCancelBtn=document.getElementById('btn-restore-cancel');
+  if(restoreConfirmBtn){
+    restoreConfirmBtn.addEventListener('click',()=>{
+      const idx=parseInt(restoreConfirmBtn.dataset.idx,10);
+      const overlay=document.getElementById('restore-overlay');
+      if(overlay)overlay.classList.remove('open');
+      if(!Number.isInteger(idx)){return;}
+      const ok=restoreFromArchive(idx);
+      if(!ok){
+        showRestoreToast('Restore failed: archive entry missing state');
+        renderArchiveList();
+        return;
+      }
+      // Hard rerender: the active state has changed under us. Bring the
+      // app shell back to the foreground (in case we were on setup) and
+      // re-emit state:changed so every tab redraws.
+      const s=getState();
+      if(!s)return;
+      document.getElementById('setup-screen').classList.remove('active');
+      document.getElementById('app').style.display='block';
+      applyTheme();
+      applyReducedMotionClass();
+      renderAll(s);
+      startCountdown(s);
+      startQuoteRotation(s);
+      renderArchiveList();
+      showRestoreToast('Past attempt restored');
+    });
+  }
+  if(restoreCancelBtn){
+    restoreCancelBtn.addEventListener('click',()=>{
+      const overlay=document.getElementById('restore-overlay');
+      if(overlay)overlay.classList.remove('open');
+    });
+  }
+}
+
+/**
+ * Lightweight toast shim that proxies the standard toast module so we
+ * can call it from the restore handler without growing import noise.
+ * @param {string} msg
+ */
+function showRestoreToast(msg){
+  // Lazy-import to keep this side-effect-free at module load.
+  import('./toast.js').then(m => m.showToast(msg)).catch(()=>{});
+}
+
+/**
+ * Render the Past Attempts list and wire its RESTORE hook to open the
+ * restore-confirm overlay. Called when the Export tab is activated and
+ * after every archive mutation.
+ * @returns {void}
+ */
+function renderArchiveList(){
+  renderArchiveView({
+    onRequestRestore: (idx, entry) => {
+      const overlay = document.getElementById('restore-overlay');
+      const body = document.getElementById('restore-confirm-body');
+      const confirmBtn = document.getElementById('btn-restore-confirm');
+      if(confirmBtn) confirmBtn.dataset.idx = String(idx);
+      if(body){
+        const name = entry && entry.name ? entry.name : '— UNNAMED —';
+        const start = entry && entry.startDate ? entry.startDate : '';
+        body.innerHTML = `Restoring "<strong>${name.replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'})[c])}</strong>" (started ${start}). ` +
+          `Your current challenge will be archived first so you can flip back later.`;
+      }
+      if(overlay) overlay.classList.add('open');
+    },
+    onAfterDelete: () => { /* no-op; renderArchiveView already redrew the list */ },
+  });
 }
 
 /**

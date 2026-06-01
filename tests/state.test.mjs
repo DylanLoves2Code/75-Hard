@@ -699,8 +699,10 @@ test('v6: migrate preserves existing quotes and audiobookMinutes values', () => 
   assert.equal(state.books[1].quotes[1].page, undefined);
 });
 
-test('v6: migrate is idempotent once at current version', () => {
-  // A v6 blob round-trips through migrate without touching anything.
+test('v6: migrate is idempotent at v6 only when CURRENT == 6 — at v7+ it advances', () => {
+  // Once CURRENT_SCHEMA_VERSION advanced past 6, a v6 blob walks forward
+  // (to v7 for the pre-challenge prep checklist). Existing v6 fields
+  // must remain intact through that step.
   const raw = {
     version: 6,
     startDate: '2025-01-01',
@@ -712,9 +714,18 @@ test('v6: migrate is idempotent once at current version', () => {
     metrics: {}, notes: {},
   };
   const { state, migrated } = migrate(raw);
-  assert.equal(migrated, false);
+  assert.equal(migrated, true);
   assert.equal(state.version, CURRENT_SCHEMA_VERSION);
+  // v6 fields are preserved through the walk forward.
   assert.equal(state.books[1].audiobookMinutes, 0);
+  // v7 stamp landed.
+  assert.deepEqual(state.prep, {
+    dietReady: false,
+    workoutsScheduled: false,
+    bookReady: false,
+    photoLocation: false,
+    backupOutdoor: false,
+  });
 });
 
 test('v6: migrate walks undefined -> 6 across the entire chain', () => {
@@ -737,6 +748,132 @@ test('v6: migrate walks undefined -> 6 across the entire chain', () => {
   // v6 stamped quotes + audiobookMinutes.
   assert.deepEqual(state.books[2].quotes, []);
   assert.equal(state.books[2].audiobookMinutes, 0);
+});
+
+// --- v7 schema migration ---------------------------------------------------
+
+test('v7: migrate adds prep:{...} with all-false defaults on a v6 blob', () => {
+  const raw = {
+    version: 6,
+    startDate: '2025-01-01',
+    name: 'X',
+    diet: { name: 'Custom', customText: '' },
+    days: { 1: { dietAdherence: true } },
+    drinks: {},
+    books: { 1: { title: 'X', pages: 10, quotes: [], audiobookMinutes: 0 } },
+    metrics: {}, notes: {},
+  };
+  const { state, migrated } = migrate(raw);
+  assert.equal(migrated, true);
+  assert.equal(state.version, CURRENT_SCHEMA_VERSION);
+  assert.deepEqual(state.prep, {
+    dietReady: false,
+    workoutsScheduled: false,
+    bookReady: false,
+    photoLocation: false,
+    backupOutdoor: false,
+  });
+  // Pre-existing v6 fields are not clobbered.
+  assert.equal(state.days[1].dietAdherence, true);
+  assert.equal(state.books[1].audiobookMinutes, 0);
+});
+
+test('v7: migrate preserves an existing prep selection on a partial v6 blob', () => {
+  // If a re-imported v6 state already carries the prep field (e.g. a
+  // post-v7 backup downgraded for testing), leave it intact.
+  const raw = {
+    version: 6,
+    startDate: '2025-01-01',
+    name: 'X',
+    diet: { name: 'Custom', customText: '' },
+    days: {},
+    drinks: {},
+    books: {},
+    metrics: {}, notes: {},
+    prep: {
+      dietReady: true,
+      workoutsScheduled: true,
+      bookReady: false,
+      photoLocation: true,
+      backupOutdoor: false,
+    },
+  };
+  const { state } = migrate(raw);
+  assert.equal(state.version, CURRENT_SCHEMA_VERSION);
+  assert.equal(state.prep.dietReady, true);
+  assert.equal(state.prep.workoutsScheduled, true);
+  assert.equal(state.prep.bookReady, false);
+  assert.equal(state.prep.photoLocation, true);
+  assert.equal(state.prep.backupOutdoor, false);
+});
+
+test('v7: migrate walks undefined -> 7 across the entire chain', () => {
+  // Pre-versioned blob now walks the full chain. Confirm v3/v6/v7
+  // stamps all landed.
+  const raw = {
+    startDate: '2025-01-01',
+    name: 'OLDEST',
+    days: { 5: { calorie: true } },
+    drinks: {},
+    books: { 2: { title: 'Older', pages: 20 } },
+    metrics: {}, notes: {},
+  };
+  const { state, migrated } = migrate(raw);
+  assert.equal(migrated, true);
+  assert.equal(state.version, CURRENT_SCHEMA_VERSION);
+  assert.equal(state.books[2].nonfiction, true);
+  assert.deepEqual(state.books[2].quotes, []);
+  assert.equal(state.prep.dietReady, false);
+  assert.equal(state.prep.backupOutdoor, false);
+});
+
+test('v7: defaultState exposes the prep field with all-false defaults', () => {
+  const s = defaultState('2025-01-01', 'X');
+  assert.ok(s.prep, 'expected prep field on a fresh defaultState');
+  assert.equal(s.prep.dietReady, false);
+  assert.equal(s.prep.workoutsScheduled, false);
+  assert.equal(s.prep.bookReady, false);
+  assert.equal(s.prep.photoLocation, false);
+  assert.equal(s.prep.backupOutdoor, false);
+});
+
+test('v7: defaultState accepts a prep override argument', () => {
+  const prep = {
+    dietReady: true,
+    workoutsScheduled: true,
+    bookReady: true,
+    photoLocation: false,
+    backupOutdoor: false,
+  };
+  const s = defaultState('2025-01-01', 'X', undefined, prep);
+  assert.equal(s.prep.dietReady, true);
+  assert.equal(s.prep.workoutsScheduled, true);
+  assert.equal(s.prep.bookReady, true);
+  assert.equal(s.prep.photoLocation, false);
+  assert.equal(s.prep.backupOutdoor, false);
+});
+
+test('v7: migrate is idempotent once at current version', () => {
+  // A v7 blob round-trips through migrate without touching anything.
+  const raw = {
+    version: 7,
+    startDate: '2025-01-01',
+    name: 'X',
+    diet: { name: 'Custom', customText: '' },
+    days: {},
+    drinks: {},
+    books: {},
+    metrics: {}, notes: {},
+    prep: {
+      dietReady: true, workoutsScheduled: false, bookReady: true,
+      photoLocation: false, backupOutdoor: true,
+    },
+  };
+  const { state, migrated } = migrate(raw);
+  assert.equal(migrated, false);
+  assert.equal(state.version, CURRENT_SCHEMA_VERSION);
+  assert.equal(state.prep.dietReady, true);
+  assert.equal(state.prep.backupOutdoor, true);
 });
 
 // --- storage usage ---------------------------------------------------------

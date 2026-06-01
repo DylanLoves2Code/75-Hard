@@ -93,6 +93,45 @@ export function renderStats(s){
   renderHeatmap(s);
   renderMissPattern(s);
   wireShareCardButton(s);
+
+  // v7: pre-challenge prep checklist card.
+  renderPrepCard(s);
+}
+
+/**
+ * Render the PRE-CHALLENGE PREP card showing which readiness boxes the
+ * user ticked at setup time. Hides itself when `prep` is missing (e.g.
+ * mid-migration before v7 stamps the field, though {@link getState}
+ * normally migrates before returning).
+ * @param {import('./state.js').State} s
+ */
+function renderPrepCard(s){
+  const host = document.getElementById('stats-prep-card');
+  if(!host) return;
+  const prep = s && s.prep;
+  if(!prep || typeof prep !== 'object'){
+    host.innerHTML = '';
+    return;
+  }
+  const rows = [
+    { key: 'dietReady',         label: 'Diet chosen and stocked' },
+    { key: 'workoutsScheduled', label: 'Both daily workouts scheduled' },
+    { key: 'bookReady',         label: 'First nonfiction book ready' },
+    { key: 'photoLocation',     label: 'Photo location identified' },
+    { key: 'backupOutdoor',     label: 'Backup outdoor workout plan' },
+  ];
+  const checked = rows.filter(r => prep[r.key]).length;
+  host.innerHTML = `
+    <div class="chart-title">// PRE-CHALLENGE PREP — ${checked} OF ${rows.length}</div>
+    <div class="prep-card-list">
+      ${rows.map(r => `
+        <div class="prep-card-row ${prep[r.key] ? 'checked' : 'unchecked'}">
+          <span class="prep-card-mark">${prep[r.key] ? '✓ checked' : '○ unchecked'}</span>
+          <span class="prep-card-label">${r.label}</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
 }
 
 /**
