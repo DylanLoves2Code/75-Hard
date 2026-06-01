@@ -2,8 +2,7 @@
 import { WATER_CUPS } from './constants.js';
 import { getState, saveState, getDayData, updateDayData, calcCurrentDay } from './state.js';
 import { checkCompletionAnimation } from './confetti.js';
-import { renderGrid } from './grid.js';
-import { renderAll } from './main.js';
+import { emit } from './bus.js';
 
 /**
  * Render the 16-cup water meter for the given day. Clicking cup `i`
@@ -35,8 +34,8 @@ export function renderWaterMeter(s,day){
         const newCups=(i<d2.waterCups)?i:(i+1);
         updateDayData(s2,day,{waterCups:newCups,water:newCups>=WATER_CUPS});
         saveState(s2);
-        if(day===calcCurrentDay()){checkCompletionAnimation(s2,day);renderAll(s2);}
-        else{renderWaterMeter(s2,day);renderGrid(s2);}
+        if(day===calcCurrentDay()){checkCompletionAnimation(s2,day);emit('state:changed',s2);}
+        else{renderWaterMeter(s2,day);emit('state:grid',s2);}
       };
       bar.addEventListener('click',activate);
       bar.addEventListener('keydown',e=>{

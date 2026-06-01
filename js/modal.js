@@ -1,7 +1,7 @@
 /** @file Day-detail modal opened from grid tiles. */
 import { getState, getDateForDay, formatDate, calcCurrentDay } from './state.js';
 import { renderTaskList } from './tasks.js';
-import { renderAll } from './main.js';
+import { emit } from './bus.js';
 
 /**
  * Open the day-detail modal for the given day index.
@@ -30,5 +30,5 @@ export function closeModal(e){if(e.target===document.getElementById('modal-overl
 /** Force-close the modal and re-render the app. @returns {void} */
 export function closeModalDirect(){
   document.getElementById('modal-overlay').classList.remove('open');
-  const s=getState();renderAll(s);
+  const s=getState();emit('state:changed',s);
 }
