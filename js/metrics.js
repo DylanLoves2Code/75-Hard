@@ -1,7 +1,14 @@
+/** @file Daily weight + sleep inputs on the Today tab. */
 import { getState, saveState, calcCurrentDay } from './state.js';
 import { showToast } from './toast.js';
 import { renderStats } from './stats.js';
 
+/**
+ * Pre-fill the weight + sleep input fields for the given day.
+ * @param {import('./state.js').State} s
+ * @param {number} day
+ * @returns {void}
+ */
 export function renderMetricInputs(s,day){
   const m=s.metrics&&s.metrics[day]||{};
   if(m.weight)document.getElementById('weight-input').value=m.weight;
@@ -10,6 +17,10 @@ export function renderMetricInputs(s,day){
   else document.getElementById('sleep-input').value='';
 }
 
+/**
+ * Persist the weight + sleep inputs into today's metrics and refresh stats.
+ * @returns {void}
+ */
 export function saveMetrics(){
   const s=getState();const day=calcCurrentDay();
   if(!s.metrics)s.metrics={};

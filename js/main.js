@@ -1,3 +1,7 @@
+/**
+ * @file Entry point — wires DOM handlers, boots the app, and exposes
+ * the top-level {@link renderAll} routine used by other modules.
+ */
 import { TOTAL } from './constants.js';
 import {
   getState, saveState, defaultState,
@@ -19,6 +23,12 @@ import { renderDrinksLog, logDrinks } from './drinks.js';
 import { closeModal, closeModalDirect } from './modal.js';
 import { exportData, confirmReset, cancelReset, executeReset } from './export.js';
 
+/**
+ * Re-render the entire app shell from the given state. This is the
+ * one routine other modules call after mutating + saving state.
+ * @param {import('./state.js').State} s
+ * @returns {void}
+ */
 export function renderAll(s){
   const day=calcCurrentDay();
   const streak=calcStreak(s);

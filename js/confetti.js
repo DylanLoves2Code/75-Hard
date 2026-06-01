@@ -1,7 +1,12 @@
+/** @file Day-complete celebration confetti effect. */
 import { isDayComplete } from './state.js';
 
 let lastAnimatedDay=null;
 
+/**
+ * Spawn 100 confetti pieces in the #confetti-container, auto-cleaning after ~3.5s.
+ * @returns {void}
+ */
 export function fireConfetti(){
   const c=document.getElementById('confetti-container');c.innerHTML='';c.classList.add('active');
   const colors=['#ff3c00','#f5c400','#00e676','#00b0ff','#ff1744','#ffffff','#d500f9'];
@@ -17,10 +22,17 @@ export function fireConfetti(){
   setTimeout(()=>{c.classList.remove('active');c.innerHTML='';},3500);
 }
 
+/**
+ * Fires the confetti exactly once per day-completion transition.
+ * @param {import('./state.js').State} s
+ * @param {number} day
+ * @returns {void}
+ */
 export function checkCompletionAnimation(s,day){
   if(isDayComplete(s,day)&&lastAnimatedDay!==day){lastAnimatedDay=day;fireConfetti();}
 }
 
+/** Clear the "already animated" guard (used on full reset). @returns {void} */
 export function resetAnimatedDay(){
   lastAnimatedDay=null;
 }

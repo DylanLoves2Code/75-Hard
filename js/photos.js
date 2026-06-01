@@ -1,6 +1,12 @@
+/** @file Photo gallery and side-by-side compare on the Photos tab. */
 import { photoKey } from './constants.js';
 import { calcCurrentDay } from './state.js';
 
+/**
+ * Render the progress-photo gallery and refresh compare selectors.
+ * @param {import('./state.js').State} s
+ * @returns {void}
+ */
 export function renderGallery(s){
   const grid=document.getElementById('gallery-grid');grid.innerHTML='';
   const today=calcCurrentDay();
@@ -29,6 +35,7 @@ export function renderGallery(s){
   renderCompare();
 }
 
+/** Re-render the two compare slots from the current <select> values. @returns {void} */
 export function renderCompare(){
   const a=document.getElementById('compare-a').value;
   const b=document.getElementById('compare-b').value;
@@ -42,10 +49,16 @@ export function renderCompare(){
   wrap.innerHTML=slotHtml(a)+slotHtml(b);
 }
 
+/**
+ * Open the full-screen lightbox showing the photo at the given storage key.
+ * @param {string} key  e.g. "photo_day_5"
+ * @returns {void}
+ */
 export function openLightbox(key){
   const photo=localStorage.getItem(key);if(!photo)return;
   document.getElementById('lightbox-img').src=photo;
   document.getElementById('lightbox').classList.add('open');
 }
 
+/** Close the lightbox overlay. @returns {void} */
 export function closeLightbox(){document.getElementById('lightbox').classList.remove('open');}

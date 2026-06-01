@@ -1,3 +1,4 @@
+/** @file Task list rendering, label editing, and photo upload. */
 import { TASKS, photoKey } from './constants.js';
 import { getState, saveState, getDayData, updateDayData, calcCurrentDay } from './state.js';
 import { checkCompletionAnimation } from './confetti.js';
@@ -5,6 +6,14 @@ import { renderGrid } from './grid.js';
 import { renderGallery, openLightbox } from './photos.js';
 import { renderAll } from './main.js';
 
+/**
+ * Render the six-task list into `containerId` for a given day.
+ * @param {import('./state.js').State} s
+ * @param {number} day
+ * @param {string} containerId   DOM id to render into (e.g. "task-list" or "modal-task-list").
+ * @param {boolean} isToday      Whether the list represents the current day (enables full interactivity).
+ * @returns {void}
+ */
 export function renderTaskList(s,day,containerId,isToday){
   const container=document.getElementById(containerId);
   const dd=getDayData(s,day);
@@ -141,6 +150,13 @@ function startEditLabel(el,t,day,containerId,isToday){
   input.addEventListener('blur',commit);
 }
 
+/**
+ * <input type="file"> change handler that reads the chosen image
+ * as a data URL, stores it under `photoKey(day)`, and marks the day's
+ * photo task complete.
+ * @param {Event} e
+ * @returns {void}
+ */
 export function handlePhotoUpload(e){
   const file=e.target.files[0];if(!file)return;
   const day=parseInt(e.target.dataset.day);

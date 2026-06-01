@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: Lint, syntax check, and unit tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install devDependencies (if package.json present)
+        run: |
+          if [ -f package.json ]; then
+            npm ci
+          else
+            echo "No package.json — skipping npm ci."
+          fi
+
+      - name: Syntax check every js/*.js file
+        run: |
+          fail=0
+          for f in js/*.js; do
+            echo "node --check $f"
+            if ! node --check "$f"; then
+              fail=1
+            fi
+          done
+          exit "$fail"
+
+      - name: Run unit tests
+        run: node --test tests/*.test.mjs
+
+      - name: Lint (if eslint is installed)
+        run: |
+          if [ -d node_modules/eslint ]; then
+            npx eslint js/
+          else
+            echo "ESLint not installed — skipping."
+          fi

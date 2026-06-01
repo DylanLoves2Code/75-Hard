@@ -1,6 +1,12 @@
+/** @file Stats tab — overview cards plus weekly/weight/sleep bar charts. */
 import { TOTAL } from './constants.js';
 import { getDayData, isDayComplete, calcCurrentDay, calcStreak, countCompleteDays } from './state.js';
 
+/**
+ * Render the stats overview cards and bar charts from saved state.
+ * @param {import('./state.js').State} s
+ * @returns {void}
+ */
 export function renderStats(s){
   const today=calcCurrentDay();
   const done=countCompleteDays(s);
@@ -41,6 +47,11 @@ export function renderStats(s){
   renderBarChart('sleep-chart', buildMetricData(s,'sleep'), '#d500f9', v=>`${v}h`);
 }
 
+/**
+ * Build `[{label, value}]` series for the weekly-completion chart.
+ * @param {import('./state.js').State} s
+ * @returns {{label:string,value:number}[]}
+ */
 export function buildWeeklyCompletionData(s){
   const today=calcCurrentDay();
   const weeks=Math.ceil(today/7);
@@ -53,6 +64,12 @@ export function buildWeeklyCompletionData(s){
   return data;
 }
 
+/**
+ * Build series for a single metric ("weight" or "sleep") across days.
+ * @param {import('./state.js').State} s
+ * @param {'weight'|'sleep'} key
+ * @returns {{label:string,value:number}[]}
+ */
 export function buildMetricData(s,key){
   const today=calcCurrentDay();const data=[];
   for(let d=1;d<=today;d++){
@@ -62,6 +79,14 @@ export function buildMetricData(s,key){
   return data;
 }
 
+/**
+ * Render a simple bar chart into `containerId`.
+ * @param {string} containerId
+ * @param {{label:string,value:number}[]} data
+ * @param {string} color  CSS color for the bars.
+ * @param {(v:number)=>string} tipFn  Tooltip formatter.
+ * @returns {void}
+ */
 export function renderBarChart(containerId,data,color,tipFn){
   const c=document.getElementById(containerId);c.innerHTML='';
   if(!data.length){c.innerHTML='<div style="font-family:var(--font-m);font-size:0.6rem;color:var(--text3);letter-spacing:0.1em;">No data yet</div>';return;}
