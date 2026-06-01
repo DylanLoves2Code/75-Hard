@@ -616,19 +616,127 @@ test('v5: defaultState exposes the v5 per-day duration defaults via getDayData',
   assert.equal(dd.w2duration, 0);
 });
 
-test('v5: migrate is idempotent at v5 (no advance once at current)', () => {
+test('v5: migrate is idempotent at v5 only when CURRENT == 5 — at v6+ it advances', () => {
+  // Once CURRENT_SCHEMA_VERSION advanced past 5, a v5 blob walks forward
+  // (to v6 for the reading-depth fields). Existing v5 fields must
+  // remain intact through that step.
   const raw = {
     version: 5,
     startDate: '2025-01-01',
     name: 'X',
     diet: { name: 'Custom', customText: '' },
     days: { 1: { w1duration: 60, w2duration: 0 } },
-    drinks: {}, books: {}, metrics: {}, notes: {},
+    drinks: {}, books: { 1: { title: 'Atomic Habits', pages: 30 } },
+    metrics: {}, notes: {},
+  };
+  const { state, migrated } = migrate(raw);
+  assert.equal(migrated, true);
+  assert.equal(state.version, CURRENT_SCHEMA_VERSION);
+  assert.equal(state.days[1].w1duration, 60);
+  // v6 fields landed on the existing book entry.
+  assert.deepEqual(state.books[1].quotes, []);
+  assert.equal(state.books[1].audiobookMinutes, 0);
+  // Existing book fields are preserved.
+  assert.equal(state.books[1].title, 'Atomic Habits');
+  assert.equal(state.books[1].pages, 30);
+});
+
+// --- v6 schema migration ---------------------------------------------------
+
+test('v6: migrate adds quotes:[] and audiobookMinutes:0 to existing book entries', () => {
+  const raw = {
+    version: 5,
+    startDate: '2025-01-01',
+    name: 'X',
+    diet: { name: 'Custom', customText: '' },
+    days: {},
+    drinks: {},
+    books: {
+      1: { title: 'Atomic Habits', pages: 30, nonfiction: true },
+      4: { title: 'War & Peace', pages: 50, nonfiction: false },
+    },
+    metrics: {}, notes: {},
+  };
+  const { state, migrated } = migrate(raw);
+  assert.equal(migrated, true);
+  assert.equal(state.version, CURRENT_SCHEMA_VERSION);
+  assert.deepEqual(state.books[1].quotes, []);
+  assert.equal(state.books[1].audiobookMinutes, 0);
+  assert.deepEqual(state.books[4].quotes, []);
+  assert.equal(state.books[4].audiobookMinutes, 0);
+  // v3+ fields are not clobbered.
+  assert.equal(state.books[4].nonfiction, false);
+});
+
+test('v6: migrate preserves existing quotes and audiobookMinutes values', () => {
+  // A re-imported state already at v6 shape (or a future re-migration)
+  // must leave the user's quote vault + audio minutes untouched.
+  const raw = {
+    version: 5,
+    startDate: '2025-01-01',
+    name: 'X',
+    diet: { name: 'Custom', customText: '' },
+    days: {},
+    drinks: {},
+    books: {
+      1: {
+        title: 'Meditations', pages: 12, nonfiction: true,
+        quotes: [
+          { text: 'Waste no more time.', page: 4 },
+          { text: 'You have power over your mind.' },
+        ],
+        audiobookMinutes: 45,
+      },
+    },
+    metrics: {}, notes: {},
+  };
+  const { state } = migrate(raw);
+  assert.equal(state.books[1].audiobookMinutes, 45);
+  assert.equal(state.books[1].quotes.length, 2);
+  assert.equal(state.books[1].quotes[0].text, 'Waste no more time.');
+  assert.equal(state.books[1].quotes[0].page, 4);
+  assert.equal(state.books[1].quotes[1].text, 'You have power over your mind.');
+  assert.equal(state.books[1].quotes[1].page, undefined);
+});
+
+test('v6: migrate is idempotent once at current version', () => {
+  // A v6 blob round-trips through migrate without touching anything.
+  const raw = {
+    version: 6,
+    startDate: '2025-01-01',
+    name: 'X',
+    diet: { name: 'Custom', customText: '' },
+    days: {},
+    drinks: {},
+    books: { 1: { title: 'X', pages: 10, quotes: [], audiobookMinutes: 0 } },
+    metrics: {}, notes: {},
   };
   const { state, migrated } = migrate(raw);
   assert.equal(migrated, false);
   assert.equal(state.version, CURRENT_SCHEMA_VERSION);
-  assert.equal(state.days[1].w1duration, 60);
+  assert.equal(state.books[1].audiobookMinutes, 0);
+});
+
+test('v6: migrate walks undefined -> 6 across the entire chain', () => {
+  // Pre-versioned blob (legacy) plus a legacy book entry that predates
+  // v3 nonfiction and v6 quotes/audio. Every migration in the chain
+  // should run.
+  const raw = {
+    startDate: '2025-01-01',
+    name: 'OLDEST',
+    days: { 5: { calorie: true } },
+    drinks: {},
+    books: { 2: { title: 'Older', pages: 20 } },
+    metrics: {}, notes: {},
+  };
+  const { state, migrated } = migrate(raw);
+  assert.equal(migrated, true);
+  assert.equal(state.version, CURRENT_SCHEMA_VERSION);
+  // v3 stamped nonfiction.
+  assert.equal(state.books[2].nonfiction, true);
+  // v6 stamped quotes + audiobookMinutes.
+  assert.deepEqual(state.books[2].quotes, []);
+  assert.equal(state.books[2].audiobookMinutes, 0);
 });
 
 // --- storage usage ---------------------------------------------------------

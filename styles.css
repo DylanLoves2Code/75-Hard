@@ -317,6 +317,51 @@ input[type="file"]{display:none;}
 /* NONFICTION inline checkbox on the book input card. */
 .book-nonfiction-label{display:inline-flex;align-items:center;gap:0.35rem;margin-left:0.75rem;font-family:var(--font-m);font-size:0.55rem;color:var(--text2);letter-spacing:0.15em;cursor:pointer;text-transform:uppercase;}
 .book-nonfiction-label input{accent-color:var(--purple);cursor:pointer;}
+/* v6 — audiobook minutes input on the book input card. Same styling as
+   the pages box but tinted blue so the two can be visually distinguished. */
+.book-audio-input{width:80px;background:var(--bg);border:1px solid var(--border2);border-left:3px solid var(--blue);color:var(--blue);font-family:var(--font-d);font-size:1.4rem;padding:0.35rem 0.5rem;outline:none;text-align:center;-moz-appearance:textfield;-webkit-appearance:none;}
+.book-audio-input::-webkit-outer-spin-button,.book-audio-input::-webkit-inner-spin-button{-webkit-appearance:none;}
+
+/* v6 — READING POMODORO panel below the book input card. */
+.pomodoro-card{background:var(--bg3);border:1px solid var(--border);border-left:3px solid var(--gold);padding:0.85rem 1rem;margin-bottom:0.75rem;display:flex;align-items:center;justify-content:space-between;gap:0.75rem;flex-wrap:wrap;}
+.pomodoro-header{display:flex;flex-direction:column;gap:0.15rem;}
+.pomodoro-label{font-family:var(--font-m);font-size:0.6rem;color:var(--text2);letter-spacing:0.15em;text-transform:uppercase;}
+.pomodoro-time{font-family:var(--font-d);font-size:1.8rem;color:var(--gold);letter-spacing:0.06em;}
+.pomodoro-actions{display:flex;gap:0.5rem;align-items:center;}
+.pomodoro-stop{background:transparent;border:1px solid var(--border2);color:var(--text3);font-family:var(--font-m);font-size:0.6rem;letter-spacing:0.15em;padding:0.4rem 0.8rem;cursor:pointer;text-transform:uppercase;transition:all 0.2s;}
+.pomodoro-stop:hover{border-color:var(--red);color:var(--red);}
+
+/* v6 — sub-tab link bar above the book log (// VIEW ALL QUOTES). */
+.books-subtab-bar{display:flex;gap:0.75rem;margin-bottom:0.6rem;}
+.books-subtab-link{font-family:var(--font-m);font-size:0.6rem;color:var(--text3);letter-spacing:0.15em;text-decoration:none;text-transform:uppercase;cursor:pointer;}
+.books-subtab-link:hover{color:var(--accent);}
+
+/* v6 — wrapper around a book-log-row that hosts its quote list + open form. */
+.book-log-row-wrap{margin-bottom:0.4rem;}
+.book-log-row-wrap .book-log-row{margin-bottom:0;}
+.book-log-quotes{margin:0.25rem 0 0 1.25rem;padding-left:0.5rem;border-left:1px dashed var(--border2);}
+.book-log-quote{display:flex;align-items:flex-start;gap:0.4rem;font-family:var(--font-m);font-size:0.7rem;color:var(--text2);letter-spacing:0.04em;padding:0.2rem 0;line-height:1.5;}
+.book-log-quote-text{flex:1;}
+.book-log-quote-page{color:var(--text3);font-size:0.6rem;}
+.book-log-quote .quote-del{background:transparent;border:1px solid var(--border2);color:var(--text3);font-family:var(--font-m);font-size:0.5rem;letter-spacing:0.15em;padding:0.1rem 0.35rem;cursor:pointer;flex-shrink:0;}
+.book-log-quote .quote-del:hover{border-color:var(--red);color:var(--red);}
+.book-log-actions .btn-row.quote:hover{border-color:var(--gold);color:var(--gold);}
+
+/* v6 — inline quote-entry form. */
+.quote-form{margin:0.4rem 0 0 1.25rem;background:var(--bg);border:1px solid var(--border2);border-left:3px solid var(--gold);padding:0.5rem 0.6rem;display:flex;flex-direction:column;gap:0.4rem;}
+.quote-form-text{width:100%;min-height:60px;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-family:var(--font-m);font-size:0.7rem;padding:0.4rem 0.5rem;outline:none;resize:vertical;line-height:1.5;}
+.quote-form-actions{display:flex;gap:0.4rem;align-items:center;}
+.quote-form-page{width:90px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:var(--font-m);font-size:0.7rem;padding:0.3rem 0.5rem;outline:none;-moz-appearance:textfield;-webkit-appearance:none;}
+.quote-form-page::-webkit-outer-spin-button,.quote-form-page::-webkit-inner-spin-button{-webkit-appearance:none;}
+.quote-form .quote-save{background:transparent;border:1px solid var(--gold);color:var(--gold);font-family:var(--font-m);font-size:0.6rem;letter-spacing:0.15em;padding:0.3rem 0.7rem;cursor:pointer;}
+.quote-form .quote-save:hover{background:var(--gold);color:#000;}
+.quote-form .quote-cancel{background:transparent;border:1px solid var(--border2);color:var(--text3);font-family:var(--font-m);font-size:0.6rem;letter-spacing:0.15em;padding:0.3rem 0.7rem;cursor:pointer;}
+
+/* v6 — aggregated quotes-vault view. */
+#quotes-view .quotes-empty{font-family:var(--font-m);font-size:0.65rem;color:var(--text3);letter-spacing:0.1em;padding:0.5rem;text-align:center;}
+.quotes-group{margin-bottom:1rem;}
+.quotes-group-title{font-family:var(--font-d);font-size:1rem;color:var(--purple);letter-spacing:0.06em;margin-bottom:0.35rem;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:0.2rem;}
+.quotes-group-line{font-family:var(--font-m);font-size:0.7rem;color:var(--text2);letter-spacing:0.04em;line-height:1.55;padding:0.25rem 0 0.25rem 0.5rem;border-left:2px solid var(--border2);margin-bottom:0.2rem;}
 
 /* EXPORT */
 .export-section{padding:1.25rem;}

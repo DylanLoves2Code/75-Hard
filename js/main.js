@@ -22,7 +22,7 @@ import { maybeShowFailurePrompt } from './failure.js';
 import { renderGrid } from './grid.js';
 import { renderStats } from './stats.js';
 import { renderGallery, renderCompare, closeLightbox } from './photos.js';
-import { renderBooks, saveBookEntry } from './books.js';
+import { renderBooks, saveBookEntry, wireBooksTab } from './books.js';
 import { renderDrinksLog, logDrinks } from './drinks.js';
 import { closeModal, closeModalDirect } from './modal.js';
 import {
@@ -332,6 +332,8 @@ function wireStaticHandlers(){
   document.getElementById('compare-b').addEventListener('change',renderCompare);
 
   document.querySelector('#tab-books .btn-sm').addEventListener('click',saveBookEntry);
+  // Reading pomodoro + quotes-vault link bar (item 37/38).
+  wireBooksTab();
   document.querySelector('#tab-drinks .btn-log').addEventListener('click',logDrinks);
 
   document.getElementById('btn-export-data').addEventListener('click',exportData);

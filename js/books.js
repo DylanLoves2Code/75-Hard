@@ -2,6 +2,14 @@
 import { getState, saveState, calcCurrentDay } from './state.js';
 import { showToast } from './toast.js';
 import { emit } from './bus.js';
+import { formatDuration } from './timer.js';
+import { fireConfetti } from './confetti.js';
+
+/** Reading-pomodoro length in seconds (item 37). */
+const POMODORO_SECONDS = 15 * 60;
+
+/** Sub-view selector — null/`'log'` for the book log, `'quotes'` for the vault. */
+let booksSubview = 'log';
 
 /**
  * Re-render the book-log list and total-pages counter into the DOM.
@@ -12,17 +20,25 @@ import { emit } from './bus.js';
 export function renderBooks(s){
   let total=0;
   const log=document.getElementById('book-log');
+  if(!log)return;
   // Tear down any pending delete-confirm document-level listeners
   // before we tear down their host buttons.
   log.querySelectorAll('.btn-row.del').forEach(b=>{
     if(typeof b._cleanup==='function')b._cleanup();
+  });
+  // Also tear down any open quote-form outside-click listeners.
+  log.querySelectorAll('.quote-form').forEach(f=>{
+    if(typeof f._cleanup==='function')f._cleanup();
   });
   log.innerHTML='';
 
   const lastEntry=Object.keys(s.books||{}).sort((a,b)=>+b-+a)[0];
   if(lastEntry&&s.books[lastEntry]){
     const last=s.books[lastEntry];
-    if(last.title)document.getElementById('book-title-input').value=last.title;
+    if(last.title){
+      const titleInput=document.getElementById('book-title-input');
+      if(titleInput)titleInput.value=last.title;
+    }
   }
 
   const entries=Object.keys(s.books||{}).sort((a,b)=>+a-+b);
@@ -32,26 +48,43 @@ export function renderBooks(s){
     const row=buildBookRow(d,e);
     log.appendChild(row);
   });
-  document.getElementById('total-pages-read').textContent=total;
+  const totalEl=document.getElementById('total-pages-read');
+  if(totalEl)totalEl.textContent=total;
+
+  // Sub-view toggling: when we're showing the quotes vault, hide the log
+  // and render the aggregated list. Re-render on every state:changed.
+  syncSubviewVisibility();
+  if(booksSubview==='quotes')renderQuotesView(s);
 }
 
 /**
  * Build a single book-log row DOM element with inline edit + delete.
  * @param {string} day  Day index, as the string key used in `s.books`.
- * @param {{title:string,pages:number}} entry
+ * @param {{title:string,pages:number,quotes?:Array<{text:string,page?:number}>}} entry
  * @returns {HTMLElement}
  */
 function buildBookRow(day,entry){
   const row=document.createElement('div');
-  row.className='book-log-row';
+  row.className='book-log-row-wrap';
   row.dataset.day=day;
-  renderBookRowDisplay(row,day,entry);
+  const inner=document.createElement('div');
+  inner.className='book-log-row';
+  row.appendChild(inner);
+  renderBookRowDisplay(inner,day,entry);
+  // Append any saved quotes below the row.
+  const quotes=Array.isArray(entry.quotes)?entry.quotes:[];
+  if(quotes.length){
+    const list=document.createElement('div');
+    list.className='book-log-quotes';
+    quotes.forEach((q,idx)=>list.appendChild(buildQuoteLine(day,q,idx)));
+    row.appendChild(list);
+  }
   return row;
 }
 
 /**
  * Populate `row` with the read-only display layout (title, day, pages,
- * EDIT / ✕ actions). Idempotent — used after a cancel or commit.
+ * EDIT / + QUOTE / ✕ actions). Idempotent — used after a cancel or commit.
  */
 function renderBookRowDisplay(row,day,entry){
   row.innerHTML='';
@@ -73,7 +106,9 @@ function renderBookRowDisplay(row,day,entry){
   }
   const dayEl=document.createElement('div');
   dayEl.className='book-log-day';
-  dayEl.textContent='DAY '+day;
+  let dayLine='DAY '+day;
+  if(entry.audiobookMinutes>0)dayLine+=' • '+entry.audiobookMinutes+'m AUDIO';
+  dayEl.textContent=dayLine;
   main.appendChild(titleEl);
   main.appendChild(dayEl);
 
@@ -89,6 +124,12 @@ function renderBookRowDisplay(row,day,entry){
   editBtn.textContent='[ EDIT ]';
   editBtn.setAttribute('aria-label','Edit day '+day+' book entry');
   editBtn.addEventListener('click',e=>{e.stopPropagation();startEditRow(row,day,entry);});
+  const quoteBtn=document.createElement('button');
+  quoteBtn.type='button';
+  quoteBtn.className='btn-row quote';
+  quoteBtn.textContent='[ + QUOTE ]';
+  quoteBtn.setAttribute('aria-label','Add a quote for day '+day);
+  quoteBtn.addEventListener('click',e=>{e.stopPropagation();openQuoteForm(row,day);});
   const delBtn=document.createElement('button');
   delBtn.type='button';
   delBtn.className='btn-row del';
@@ -96,11 +137,164 @@ function renderBookRowDisplay(row,day,entry){
   delBtn.setAttribute('aria-label','Delete day '+day+' book entry');
   delBtn.addEventListener('click',e=>{e.stopPropagation();startDeleteConfirm(row,day,delBtn);});
   actions.appendChild(editBtn);
+  actions.appendChild(quoteBtn);
   actions.appendChild(delBtn);
 
   row.appendChild(main);
   row.appendChild(pagesEl);
   row.appendChild(actions);
+}
+
+/**
+ * Build a single saved-quote display line shown below a book row.
+ * Includes a small ✕ to delete that quote.
+ * @param {string} day
+ * @param {{text:string,page?:number}} quote
+ * @param {number} idx  Position within the row's quotes array.
+ * @returns {HTMLElement}
+ */
+function buildQuoteLine(day,quote,idx){
+  const line=document.createElement('div');
+  line.className='book-log-quote';
+  const txt=document.createElement('span');
+  txt.className='book-log-quote-text';
+  txt.textContent='"'+(quote.text||'')+'"';
+  line.appendChild(txt);
+  if(quote.page!==undefined&&quote.page!==null&&quote.page!==''){
+    const page=document.createElement('span');
+    page.className='book-log-quote-page';
+    page.textContent=' — p.'+quote.page;
+    line.appendChild(page);
+  }
+  const delQ=document.createElement('button');
+  delQ.type='button';
+  delQ.className='btn-row quote-del';
+  delQ.textContent='[ ✕ ]';
+  delQ.setAttribute('aria-label','Delete quote '+(idx+1)+' for day '+day);
+  delQ.addEventListener('click',e=>{e.stopPropagation();deleteQuote(day,idx);});
+  line.appendChild(delQ);
+  return line;
+}
+
+/**
+ * Reveal an inline quote-entry form anchored below the row's
+ * action bar (textarea + optional page number + SAVE/CANCEL).
+ * Outside click cancels; Escape cancels; Enter on the page input commits.
+ */
+function openQuoteForm(row,day){
+  // Clean up any other open form first so only one is visible at a time.
+  document.querySelectorAll('.quote-form').forEach(f=>{
+    if(typeof f._cleanup==='function')f._cleanup();
+  });
+  // If a form is already open under this row, close it (toggle).
+  const wrap=row.parentElement;
+  const existing=wrap.querySelector(':scope > .quote-form');
+  if(existing){
+    if(typeof existing._cleanup==='function')existing._cleanup();
+    return;
+  }
+  const form=document.createElement('div');
+  form.className='quote-form';
+  const ta=document.createElement('textarea');
+  ta.className='quote-form-text';
+  ta.placeholder='Paste a passage or quote...';
+  ta.setAttribute('aria-label','Quote text for day '+day);
+  const pageInput=document.createElement('input');
+  pageInput.type='number';
+  pageInput.className='quote-form-page';
+  pageInput.min='0';pageInput.max='99999';
+  pageInput.placeholder='page #';
+  pageInput.setAttribute('aria-label','Optional page number');
+  const saveBtn=document.createElement('button');
+  saveBtn.type='button';
+  saveBtn.className='btn-row quote-save';
+  saveBtn.textContent='[ SAVE ]';
+  const cancelBtn=document.createElement('button');
+  cancelBtn.type='button';
+  cancelBtn.className='btn-row quote-cancel';
+  cancelBtn.textContent='[ CANCEL ]';
+  const actions=document.createElement('div');
+  actions.className='quote-form-actions';
+  actions.appendChild(pageInput);
+  actions.appendChild(saveBtn);
+  actions.appendChild(cancelBtn);
+  form.appendChild(ta);
+  form.appendChild(actions);
+
+  let finished=false;
+  const cleanup=()=>{
+    if(finished)return;finished=true;
+    document.removeEventListener('click',outsideHandler,true);
+    if(form.parentNode)form.parentNode.removeChild(form);
+    form._cleanup=null;
+  };
+  const outsideHandler=(ev)=>{
+    if(form.contains(ev.target))return;
+    cleanup();
+  };
+  form._cleanup=cleanup;
+
+  const commit=()=>{
+    const text=ta.value.trim();
+    if(!text){cleanup();return;}
+    const pageRaw=pageInput.value.trim();
+    const page=pageRaw===''?undefined:Math.max(0,parseInt(pageRaw,10)||0);
+    addQuote(day,text,page);
+    cleanup();
+  };
+  saveBtn.addEventListener('click',commit);
+  cancelBtn.addEventListener('click',cleanup);
+  ta.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){e.preventDefault();cleanup();}
+  });
+  pageInput.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){e.preventDefault();commit();}
+    else if(e.key==='Escape'){e.preventDefault();cleanup();}
+  });
+
+  wrap.appendChild(form);
+  document.addEventListener('click',outsideHandler,true);
+  ta.focus();
+}
+
+/**
+ * Append a quote to the day's book entry. Emits `state:changed` so
+ * the log + quotes vault refresh.
+ * @param {string} day
+ * @param {string} text
+ * @param {number|undefined} page
+ */
+export function addQuote(day,text,page){
+  const s=getState();
+  if(!s.books)s.books={};
+  const entry=s.books[day];
+  if(!entry){
+    showToast('Log a book entry first');
+    return;
+  }
+  if(!Array.isArray(entry.quotes))entry.quotes=[];
+  const q={text};
+  if(page!==undefined&&!Number.isNaN(page))q.page=page;
+  entry.quotes.push(q);
+  saveState(s);
+  emit('state:changed',s);
+  showToast('Quote saved');
+}
+
+/**
+ * Remove a quote at index `idx` from the day's quotes array.
+ * @param {string} day
+ * @param {number} idx
+ */
+export function deleteQuote(day,idx){
+  const s=getState();
+  const entry=s.books&&s.books[day];
+  if(!entry||!Array.isArray(entry.quotes))return;
+  if(idx<0||idx>=entry.quotes.length)return;
+  entry.quotes.splice(idx,1);
+  saveState(s);
+  emit('state:changed',s);
+  showToast('Quote removed');
 }
 
 /**
@@ -158,7 +352,16 @@ function startEditRow(row,day,entry){
     const newPages=parseInt(pagesInput.value)||0;
     const s=getState();
     if(!s.books)s.books={};
-    s.books[day]={title:newTitle,pages:newPages,nonfiction:nfInput.checked};
+    const prev=s.books[day]||{};
+    s.books[day]={
+      ...prev,
+      title:newTitle,
+      pages:newPages,
+      nonfiction:nfInput.checked,
+      // Preserve v6 fields if present.
+      quotes:Array.isArray(prev.quotes)?prev.quotes:[],
+      audiobookMinutes:typeof prev.audiobookMinutes==='number'?prev.audiobookMinutes:0,
+    };
     saveState(s);
     emit('state:changed',s);
     showToast('Book entry updated');
@@ -240,6 +443,8 @@ function startDeleteConfirm(row,day,delBtn){
  *
  * v3 added a `nonfiction` checkbox (default true) so users can flag the
  * rare fiction entry; we preserve the existing value if present.
+ * v6 added an `audiobookMinutes` input — separate field, supplemental
+ * to (not counted toward) the 10-page rule.
  * @returns {void}
  */
 export function saveBookEntry(){
@@ -250,6 +455,224 @@ export function saveBookEntry(){
   const nfEl=document.getElementById('book-nonfiction-input');
   // Defaults to true: 75 Hard requires nonfiction self-improvement reading.
   const nonfiction=nfEl?nfEl.checked:true;
-  s.books[day]={title,pages,nonfiction};
+  const audioEl=document.getElementById('book-audio-input');
+  const audiobookMinutes=audioEl?(parseInt(audioEl.value,10)||0):0;
+  // Preserve any quotes already saved for the day.
+  const prev=s.books[day]||{};
+  s.books[day]={
+    title,pages,nonfiction,
+    quotes:Array.isArray(prev.quotes)?prev.quotes:[],
+    audiobookMinutes,
+  };
   saveState(s);renderBooks(s);showToast('Book entry saved');
+}
+
+// ---- POMODORO (item 37) ----------------------------------------------------
+
+let pomodoroId=null;
+let pomodoroEndsAt=0;
+
+/**
+ * Start (or restart) the 15-minute reading-pomodoro countdown. Idempotent
+ * — repeated clicks while running are ignored.
+ * @returns {void}
+ */
+export function startPomodoro(){
+  if(pomodoroId)return;
+  pomodoroEndsAt=Date.now()+POMODORO_SECONDS*1000;
+  const startBtn=document.getElementById('pomodoro-start');
+  const stopBtn=document.getElementById('pomodoro-stop');
+  if(startBtn)startBtn.hidden=true;
+  if(stopBtn)stopBtn.hidden=false;
+  tickPomodoro();
+  pomodoroId=setInterval(tickPomodoro,500);
+}
+
+/**
+ * Update the MM:SS display from the saved `pomodoroEndsAt`. When the
+ * countdown reaches zero, fires the celebration confetti + toast and
+ * stops the timer.
+ * @returns {void}
+ */
+function tickPomodoro(){
+  const remaining=Math.max(0,Math.round((pomodoroEndsAt-Date.now())/1000));
+  const display=document.getElementById('pomodoro-time');
+  if(display)display.textContent=formatDuration(remaining);
+  if(remaining<=0){
+    stopPomodoroInternal(true);
+  }
+}
+
+/**
+ * Manually stop the pomodoro before it finishes. No toast, no confetti.
+ * @returns {void}
+ */
+export function stopPomodoro(){
+  stopPomodoroInternal(false);
+}
+
+function stopPomodoroInternal(completed){
+  if(pomodoroId){clearInterval(pomodoroId);pomodoroId=null;}
+  const startBtn=document.getElementById('pomodoro-start');
+  const stopBtn=document.getElementById('pomodoro-stop');
+  if(startBtn)startBtn.hidden=false;
+  if(stopBtn)stopBtn.hidden=true;
+  const display=document.getElementById('pomodoro-time');
+  if(display)display.textContent=formatDuration(POMODORO_SECONDS);
+  if(completed){
+    fireConfetti();
+    showToast('Session complete — log your pages.');
+  }
+}
+
+// ---- QUOTES VAULT (item 38) ------------------------------------------------
+
+/**
+ * Switch the Books tab into the aggregated quotes-vault view.
+ * @returns {void}
+ */
+export function showQuotesView(){
+  booksSubview='quotes';
+  const s=getState();
+  if(s)renderQuotesView(s);
+  syncSubviewVisibility();
+}
+
+/**
+ * Restore the book-log view (default).
+ * @returns {void}
+ */
+export function showBookLogView(){
+  booksSubview='log';
+  syncSubviewVisibility();
+}
+
+/**
+ * Toggle visibility of the log vs. quotes-vault subviews + the small
+ * link bar at the top of the tab.
+ */
+function syncSubviewVisibility(){
+  const log=document.getElementById('book-log');
+  const vault=document.getElementById('quotes-view');
+  const toQuotes=document.getElementById('books-view-quotes');
+  const toLog=document.getElementById('books-view-log');
+  if(!log||!vault)return;
+  if(booksSubview==='quotes'){
+    log.hidden=true;
+    vault.hidden=false;
+    if(toQuotes)toQuotes.hidden=true;
+    if(toLog)toLog.hidden=false;
+  } else {
+    log.hidden=false;
+    vault.hidden=true;
+    if(toQuotes)toQuotes.hidden=false;
+    if(toLog)toLog.hidden=true;
+  }
+}
+
+/**
+ * Build the aggregated quotes-vault DOM grouped by book title.
+ * @param {import('./state.js').State} s
+ */
+function renderQuotesView(s){
+  const host=document.getElementById('quotes-view');
+  if(!host)return;
+  host.innerHTML='';
+  const groups=collectQuotesByBook(s);
+  if(!groups.length){
+    const empty=document.createElement('div');
+    empty.className='quotes-empty';
+    empty.textContent='// NO QUOTES SAVED YET — add one from a book log row.';
+    host.appendChild(empty);
+    return;
+  }
+  groups.forEach(g=>{
+    const sec=document.createElement('div');
+    sec.className='quotes-group';
+    const h=document.createElement('div');
+    h.className='quotes-group-title';
+    h.textContent=g.title;
+    sec.appendChild(h);
+    g.entries.forEach(({text,page})=>{
+      const line=document.createElement('div');
+      line.className='quotes-group-line';
+      let s2='"'+text+'" — '+g.title;
+      if(page!==undefined&&page!==null&&page!=='')s2+=', p.'+page;
+      line.textContent=s2;
+      sec.appendChild(line);
+    });
+    host.appendChild(sec);
+  });
+}
+
+/**
+ * Aggregate quotes across all book entries, grouped by the latest title
+ * for each book key. Returns ordered list keyed by title (case-insensitive
+ * dedupe — entries logged under "Atomic Habits" and "atomic habits" merge).
+ *
+ * Exported for the unit tests so the aggregation logic is verifiable
+ * without touching the DOM.
+ *
+ * @param {import('./state.js').State} s
+ * @returns {Array<{title:string,entries:Array<{text:string,page?:number}>}>}
+ */
+export function collectQuotesByBook(s){
+  const map=new Map();
+  if(!s||!s.books)return [];
+  const days=Object.keys(s.books).sort((a,b)=>+a-+b);
+  days.forEach(d=>{
+    const b=s.books[d];
+    if(!b||!Array.isArray(b.quotes)||!b.quotes.length)return;
+    const title=(b.title||'(No title)').trim()||'(No title)';
+    const key=title.toLowerCase();
+    let bucket=map.get(key);
+    if(!bucket){
+      bucket={title,entries:[]};
+      map.set(key,bucket);
+    }
+    b.quotes.forEach(q=>{
+      if(!q||typeof q.text!=='string'||!q.text.trim())return;
+      bucket.entries.push({text:q.text,page:q.page});
+    });
+  });
+  return [...map.values()].filter(g=>g.entries.length>0);
+}
+
+/**
+ * Wire the pomodoro + quotes-vault subtab handlers. Called once at boot
+ * from main.js.
+ * @returns {void}
+ */
+export function wireBooksTab(){
+  const startBtn=document.getElementById('pomodoro-start');
+  const stopBtn=document.getElementById('pomodoro-stop');
+  if(startBtn)startBtn.addEventListener('click',startPomodoro);
+  if(stopBtn)stopBtn.addEventListener('click',stopPomodoro);
+  const toQuotes=document.getElementById('books-view-quotes');
+  if(toQuotes)toQuotes.addEventListener('click',e=>{e.preventDefault();showQuotesView();});
+  const toLog=document.getElementById('books-view-log');
+  if(toLog)toLog.addEventListener('click',e=>{e.preventDefault();showBookLogView();});
+  // Initialize the time display.
+  const display=document.getElementById('pomodoro-time');
+  if(display)display.textContent=formatDuration(POMODORO_SECONDS);
+}
+
+// ---- AUDIOBOOK MINUTES (item 39) ------------------------------------------
+
+/**
+ * Total audiobook minutes across all logged book entries.
+ * Used by the Stats tab to display "AUDIOBOOK HOURS".
+ * @param {import('./state.js').State} s
+ * @returns {number}
+ */
+export function totalAudiobookMinutes(s){
+  if(!s||!s.books)return 0;
+  let n=0;
+  for(const k in s.books){
+    const b=s.books[k];
+    if(!b)continue;
+    const m=Number(b.audiobookMinutes);
+    if(Number.isFinite(m)&&m>0)n+=m;
+  }
+  return n;
 }
