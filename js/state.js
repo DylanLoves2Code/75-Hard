@@ -4,9 +4,19 @@
  * The "state" is a single JSON object stored at `STORAGE_KEY` in
  * localStorage. Photos are NOT in this object — they live under
  * separate `photo_day_<n>` keys (see `js/constants.js`).
+ *
+ * State carries an internal `version` field. {@link getState} runs the
+ * stored shape through {@link migrate} before returning so callers
+ * always see the current schema. New schema versions are added by
+ * extending the switch in {@link migrate} and bumping
+ * {@link CURRENT_SCHEMA_VERSION}.
  */
 
-import { TOTAL, STORAGE_KEY } from './constants.js';
+import {
+  TOTAL, STORAGE_KEY, photoKey,
+  STORAGE_QUOTA_BYTES, STORAGE_WARN_THRESHOLD,
+} from './constants.js';
+import { showToast } from './toast.js';
 
 /**
  * Per-day record. All fields are optional in storage; missing fields
@@ -30,6 +40,7 @@ import { TOTAL, STORAGE_KEY } from './constants.js';
  * Full saved state — the JSON serialized to localStorage.
  *
  * @typedef {Object} State
+ * @property {number} version                         Schema version. See {@link CURRENT_SCHEMA_VERSION}.
  * @property {string} startDate                       ISO "YYYY-MM-DD" start date.
  * @property {string} name                            Display name (uppercase).
  * @property {Object<string,DayData>} days            Map of day index (1..75) to DayData.
@@ -42,17 +53,184 @@ import { TOTAL, STORAGE_KEY } from './constants.js';
 const DAY_DEFAULTS=Object.freeze({calorie:false,w1:false,w2:false,read:false,water:false,photo:false,w1label:'Workout 1',w2label:'Workout 2',waterCups:0});
 
 /**
- * Load the saved state from localStorage.
- * @returns {?State} parsed state, or `null` if nothing has been saved yet.
+ * The schema version this build of the app writes. Bumped whenever the
+ * shape of stored state changes; {@link migrate} handles upgrades.
  */
-export function getState(){return JSON.parse(localStorage.getItem(STORAGE_KEY)||'null');}
+export const CURRENT_SCHEMA_VERSION = 2;
 
 /**
- * Persist `s` to localStorage as JSON.
+ * Parse a "YYYY-MM-DD" string as a Date at LOCAL midnight (not UTC).
+ *
+ * `new Date("2025-01-15")` is parsed as UTC midnight per ECMAScript, so
+ * in any negative-offset timezone it lands on the *previous* local day
+ * — which broke day-arithmetic for users west of UTC. Always parse
+ * `startDate` through this helper.
+ *
+ * @param {string} yyyymmdd  An ISO calendar date, e.g. "2025-01-15".
+ * @returns {Date}           Local-midnight Date for that calendar day.
+ */
+export function parseLocalDate(yyyymmdd){
+  const [y,m,d]=yyyymmdd.split('-').map(Number);
+  return new Date(y,m-1,d);
+}
+
+/**
+ * Ordered chain of step migrations. Each entry advances state from
+ * one version to the next. New migrations are appended.
+ *
+ * To register `migration_3` (v2 -> v3): push
+ * `{from:2,to:3,run:(s)=>{ ...mutate s in place...; s.version=3; }}`.
+ *
+ * @type {Array<{from:(number|undefined),to:number,run:(s:Object)=>void}>}
+ */
+const MIGRATIONS=[
+  {
+    from:undefined,to:2,
+    run:(s)=>{
+      // Pre-versioned shape. Stamp version + add any new fields with
+      // safe defaults. (No new top-level fields needed at v2.)
+      s.version=2;
+    },
+  },
+  {
+    from:1,to:2,
+    run:(s)=>{
+      // Same shape as undefined -> 2 (the original release never wrote
+      // an explicit version: 1, but accept it for safety).
+      s.version=2;
+    },
+  },
+];
+
+/**
+ * Upgrade a stored state object to {@link CURRENT_SCHEMA_VERSION} by
+ * walking the {@link MIGRATIONS} chain. A state at version N walks
+ * every step up to current.
+ *
+ * @param {Object} state  Raw state from localStorage (any prior shape).
+ * @returns {{state: State, migrated: boolean}}  Upgraded state and
+ *   whether any migration step ran (caller should persist if true).
+ */
+export function migrate(state){
+  if(!state)return{state,migrated:false};
+  let migrated=false;
+  // Walk migrations until we reach CURRENT_SCHEMA_VERSION or run out.
+  // Guarded with a step limit to defend against accidental cycles.
+  for(let i=0;i<MIGRATIONS.length+1;i++){
+    if(state.version===CURRENT_SCHEMA_VERSION)break;
+    const step=MIGRATIONS.find(m=>m.from===state.version);
+    if(!step){
+      if(state.version!==undefined&&state.version>CURRENT_SCHEMA_VERSION){
+        // Downgrade scenario — leave untouched.
+        console.warn('[migrate] state.version=',state.version,'> current=',CURRENT_SCHEMA_VERSION);
+      }
+      break;
+    }
+    console.info('[migrate] state',step.from,'->',step.to);
+    step.run(state);
+    migrated=true;
+  }
+  return{state,migrated};
+}
+
+/**
+ * Load the saved state from localStorage, running any pending
+ * migrations. The migrated shape is persisted back if it changed.
+ * @returns {?State} parsed state, or `null` if nothing has been saved yet.
+ */
+export function getState(){
+  const raw=JSON.parse(localStorage.getItem(STORAGE_KEY)||'null');
+  if(!raw)return null;
+  const{state,migrated}=migrate(raw);
+  if(migrated)saveState(state);
+  return state;
+}
+
+/**
+ * Persist `s` to localStorage as JSON. On quota exhaustion, surfaces a
+ * toast warning and swallows the error (callers continue running with
+ * stale-on-disk state rather than crashing).
  * @param {State} s
  * @returns {void}
  */
-export function saveState(s){localStorage.setItem(STORAGE_KEY,JSON.stringify(s));}
+export function saveState(s){
+  try{
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(s));
+  }catch(err){
+    if(isQuotaError(err)){
+      showToast('Storage almost full. Export your data and reset older photos.');
+    }else{
+      throw err;
+    }
+  }
+}
+
+/**
+ * Persist a photo's data URL at `photoKey(day)`. Separate from
+ * {@link saveState} because photos are large and quota failures are
+ * far more likely here. Behaviour on quota: same toast warning.
+ * @param {number} day  Day index (1..TOTAL).
+ * @param {string} dataUrl  Image data URL (typically downscaled JPEG).
+ * @returns {boolean} `true` on success, `false` if quota was exhausted.
+ */
+export function savePhoto(day,dataUrl){
+  try{
+    localStorage.setItem(photoKey(day),dataUrl);
+    return true;
+  }catch(err){
+    if(isQuotaError(err)){
+      showToast('Storage almost full. Export your data and reset older photos.');
+      return false;
+    }
+    throw err;
+  }
+}
+
+/**
+ * Whether an exception thrown by `localStorage.setItem` represents a
+ * quota-exhaustion failure. Handles Safari's legacy DOMException name
+ * (`QUOTA_EXCEEDED_ERR`, code 22) and modern Chrome/Firefox/Safari
+ * (`QuotaExceededError`).
+ * @param {unknown} err
+ * @returns {boolean}
+ */
+function isQuotaError(err){
+  if(!err)return false;
+  if(err.name==='QuotaExceededError')return true;
+  if(err.name==='NS_ERROR_DOM_QUOTA_REACHED')return true; // Firefox
+  if(typeof err.code==='number'&&err.code===22)return true;
+  return false;
+}
+
+/**
+ * Rough total bytes used by the app in localStorage: the main state
+ * JSON plus every existing photo blob. Used at boot to warn the user
+ * before they hit the hard {@link STORAGE_QUOTA_BYTES} ceiling.
+ * @returns {number} byte count (UTF-16 char length, not encoded size).
+ */
+export function getStorageUsageBytes(){
+  const raw=localStorage.getItem(STORAGE_KEY);
+  let total=raw?raw.length:0;
+  for(let d=1;d<=TOTAL;d++){
+    const p=localStorage.getItem(photoKey(d));
+    if(p)total+=p.length;
+  }
+  return total;
+}
+
+/**
+ * At boot, surface a soft toast if storage usage is above
+ * {@link STORAGE_WARN_THRESHOLD} of {@link STORAGE_QUOTA_BYTES}.
+ * @returns {void}
+ */
+export function checkStorageUsage(){
+  const used=getStorageUsageBytes();
+  const ratio=used/STORAGE_QUOTA_BYTES;
+  if(ratio>=STORAGE_WARN_THRESHOLD){
+    const pct=Math.round(ratio*100);
+    showToast(`Storage at ${pct}% — consider exporting`);
+  }
+}
 
 /**
  * Build a fresh empty state for a new challenge run.
@@ -61,7 +239,7 @@ export function saveState(s){localStorage.setItem(STORAGE_KEY,JSON.stringify(s))
  * @returns {State}
  */
 export function defaultState(start,name){
-  return {startDate:start,name:name||'',days:{},drinks:{},books:{},metrics:{},notes:{}};
+  return {version:CURRENT_SCHEMA_VERSION,startDate:start,name:name||'',days:{},drinks:{},books:{},metrics:{},notes:{}};
 }
 
 /**
@@ -106,7 +284,7 @@ export function isDayComplete(s,d){
 export function calcCurrentDay(){
   const s=getState();if(!s)return 1;
   const today=new Date();today.setHours(0,0,0,0);
-  const start=new Date(s.startDate);start.setHours(0,0,0,0);
+  const start=parseLocalDate(s.startDate);
   const diff=Math.floor((today-start)/86400000)+1;
   return Math.max(1,Math.min(diff,TOTAL));
 }
@@ -125,7 +303,7 @@ export function calcCurrentWeek(){return Math.ceil(calcCurrentDay()/7);}
  */
 export function getDateForDay(d){
   const s=getState();
-  const start=new Date(s.startDate);start.setHours(0,0,0,0);
+  const start=parseLocalDate(s.startDate);
   const date=new Date(start);date.setDate(date.getDate()+d-1);
   return date;
 }

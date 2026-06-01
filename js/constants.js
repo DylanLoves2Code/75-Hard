@@ -15,6 +15,19 @@ export const STORAGE_KEY = '75hard_v2';
 export const THEME_KEY = '75hard_theme';
 
 /**
+ * Conservative localStorage quota (bytes). Real browser quotas vary
+ * (Safari/iOS Safari ~5 MB per origin; desktop browsers often ~10 MB),
+ * so we pick the smallest realistic ceiling and warn against it.
+ */
+export const STORAGE_QUOTA_BYTES = 5_000_000;
+
+/**
+ * Fraction of {@link STORAGE_QUOTA_BYTES} at which we surface a soft
+ * "consider exporting" warning at boot.
+ */
+export const STORAGE_WARN_THRESHOLD = 0.8;
+
+/**
  * localStorage key for a given day's progress photo (data URL).
  * Photos are stored OUTSIDE the main state to keep export size small.
  * @param {number} d  Day index (1..TOTAL).
