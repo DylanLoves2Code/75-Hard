@@ -8,6 +8,11 @@ let lastAnimatedDay=null;
  * @returns {void}
  */
 export function fireConfetti(){
+  // Respect the user's reduced-motion preference — skip the visual
+  // celebration entirely (completion state still toggles via the caller).
+  if(typeof window!=='undefined'&&window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+    return;
+  }
   const c=document.getElementById('confetti-container');c.innerHTML='';c.classList.add('active');
   const colors=['#ff3c00','#f5c400','#00e676','#00b0ff','#ff1744','#ffffff','#d500f9'];
   for(let i=0;i<100;i++){
