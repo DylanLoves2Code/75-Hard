@@ -169,9 +169,26 @@
          adds at least one partner snapshot via the Settings modal. -->
     <div id="partners-panel" style="display:none;"></div>
 
+    <!-- w6b item 48: LIVE HARD continuation banner. Visible only on Day 75
+         when the user has at least 50% completion. Clicking flips state
+         into 'livehard-p1' (30 more days). Mutually exclusive with the
+         day-complete / urgent banners by virtue of #shouldOfferLiveHard
+         only firing on Day 75. -->
+    <div class="livehard-banner" id="livehard-banner" style="display:none;" aria-live="polite">
+      <div class="livehard-icon">🏔</div>
+      <div class="livehard-text">
+        <div class="livehard-title">BEGIN LIVE HARD — PHASE 1</div>
+        <div class="livehard-sub">// 30 more days. Adds handshake/call + critical task list. Stretching 4×/wk.</div>
+      </div>
+      <button type="button" class="btn-sm" id="livehard-begin-btn">ENGAGE</button>
+    </div>
+
     <div class="section">
       <div class="section-title">OBJECTIVES</div>
       <div class="task-list" id="task-list"></div>
+      <!-- w6b item 48: Live Hard-only critical-task list. main.js renders
+           into this section only when programMode === 'livehard-p1'. -->
+      <div id="livehard-tasks" style="display:none;"></div>
     </div>
 
     <!-- WATER METER -->
@@ -607,6 +624,34 @@
         <input type="time" class="settings-input" id="set-ics-w2" step="60">
       </div>
 
+      <!-- w6b item 49/50: Health & wearable integrations (CSV-import fallback;
+           OAuth requires a build-time client which the static PWA can't host). -->
+      <div class="settings-section-divider">// HEALTH INTEGRATIONS</div>
+
+      <div class="settings-row settings-row-block">
+        <div class="settings-label">
+          <span class="settings-name">Google Fit / Apple Health</span>
+          <span class="settings-hint">// OAuth requires a developer setup. Static build ships a CSV fallback.</span>
+        </div>
+        <div class="settings-notif-row">
+          <button type="button" class="btn-sm" id="set-health-info">CONNECT GOOGLE FIT</button>
+          <button type="button" class="btn-sm" id="set-health-csv">MANUAL WEIGHT IMPORT</button>
+        </div>
+        <input type="file" id="health-weight-csv-input" accept=".csv,text/csv" style="display:none;">
+      </div>
+
+      <div class="settings-row settings-row-block">
+        <div class="settings-label">
+          <span class="settings-name">Wearable Sleep (Oura / Whoop / Fitbit)</span>
+          <span class="settings-hint">// Per-vendor OAuth. CSV fallback works today.</span>
+        </div>
+        <div class="settings-notif-row">
+          <button type="button" class="btn-sm" id="set-wearable-info">WEARABLE SLEEP IMPORT</button>
+          <button type="button" class="btn-sm" id="set-wearable-csv">MANUAL SLEEP IMPORT</button>
+        </div>
+        <input type="file" id="wearable-sleep-csv-input" accept=".csv,text/csv" style="display:none;">
+      </div>
+
       <!-- w5c item 45: accountability partners -->
       <div class="settings-section-divider">// PARTNERS</div>
 
@@ -628,6 +673,36 @@
       <button class="btn-sm" id="settings-save">SAVE SETTINGS</button>
       <button class="btn-cancel" id="settings-cancel-btn">CANCEL</button>
     </div>
+  </div>
+</div>
+
+<!-- w6b item 49: Health OAuth-stub info modal. Body text is injected by
+     js/health.js openHealthInfo(). -->
+<div class="modal-overlay" id="health-info-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-day-title">HEALTH INTEGRATIONS</div>
+        <div class="modal-date-sub">// DEVELOPER NOTE</div>
+      </div>
+      <button class="modal-close" id="health-info-close" aria-label="Close">[ CLOSE ]</button>
+    </div>
+    <pre id="health-info-body" class="info-modal-body" style="white-space:pre-wrap;font-family:var(--font-m);font-size:0.65rem;line-height:1.5;color:var(--text2);"></pre>
+  </div>
+</div>
+
+<!-- w6b item 50: Wearable OAuth-stub info modal. Body text injected by
+     js/wearable.js openWearableInfo(). -->
+<div class="modal-overlay" id="wearable-info-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-day-title">WEARABLE SLEEP</div>
+        <div class="modal-date-sub">// DEVELOPER NOTE</div>
+      </div>
+      <button class="modal-close" id="wearable-info-close" aria-label="Close">[ CLOSE ]</button>
+    </div>
+    <pre id="wearable-info-body" class="info-modal-body" style="white-space:pre-wrap;font-family:var(--font-m);font-size:0.65rem;line-height:1.5;color:var(--text2);"></pre>
   </div>
 </div>
 

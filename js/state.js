@@ -84,10 +84,11 @@ import { showToast } from './toast.js';
  * @property {Object<string,{weight:?number,sleep:?number}>} metrics  Daily weight/sleep metrics.
  * @property {Object<string,string>} notes            Daily field notes (free text).
  * @property {{dietReady:boolean,workoutsScheduled:boolean,bookReady:boolean,photoLocation:boolean,backupOutdoor:boolean}} [prep]
- *                                                    v7+ pre-challenge "readiness check" advisory flags. All five
- *                                                    default to `false` and the user may engage the challenge with
- *                                                    any subset checked. Migrations stamp this on existing runs as
- *                                                    five `false`s so older challenges show an empty prep card.
+ *                                                    v7+ pre-challenge "readiness check" advisory flags.
+ * @property {'75hard'|'livehard-p1'} [programMode]   v7+ which program the user is currently running.
+ * @property {number} [programDay]                    v7+ 1-based day index within the current program.
+ * @property {number} [programTotal]                  v7+ total length of the current program (75/30/etc).
+ * @property {string} [programStartDate]              v7+ ISO start date of the current program phase.
  */
 
 const DAY_DEFAULTS=Object.freeze({
@@ -103,6 +104,14 @@ const DAY_DEFAULTS=Object.freeze({
   failureReason:null,
   // v5+ workout-timer durations (seconds). 0 = never timed.
   w1duration:0,w2duration:0,
+  // v7+ Live Hard fields. The original six tasks continue to gate
+  // {@link isDayComplete} for '75hard'; in 'livehard-p1' the handshake
+  // boolean + the criticalTasksDone[] are also required (see
+  // isDayComplete). These default to "not done" so a pre-livehard day
+  // record always reads as incomplete on those extra slots.
+  handshake:false,
+  criticalTasks:Object.freeze([]),
+  criticalTasksDone:Object.freeze([]),
 });
 
 /**
@@ -272,14 +281,11 @@ const MIGRATIONS=[
   {
     from:6,to:7,
     run:(s)=>{
-      // v7: pre-challenge prep checklist.
-      //   - Adds top-level `s.prep` with five advisory booleans, all
-      //     defaulted false. The user ticks them on the setup screen
-      //     before the challenge begins; they remain visible on the
-      //     Stats tab afterwards as a read-only "PRE-CHALLENGE PREP"
-      //     card. Migrating pre-v7 states preserves the user's
-      //     existing run with prep recorded as "not done" — the field
-      //     is advisory only, so this is non-destructive.
+      // v7 combines two additions:
+      //   1. Pre-challenge prep checklist — `s.prep` with five advisory booleans.
+      //   2. Live Hard continuation — `programMode`, `programDay`, `programTotal`,
+      //      `programStartDate`, plus per-day `handshake`, `criticalTasks`,
+      //      `criticalTasksDone`.
       if(s.prep===undefined){
         s.prep={
           dietReady:false,
@@ -288,6 +294,19 @@ const MIGRATIONS=[
           photoLocation:false,
           backupOutdoor:false,
         };
+      }
+      if(s.programMode===undefined)s.programMode='75hard';
+      if(s.programTotal===undefined)s.programTotal=75;
+      if(s.programStartDate===undefined)s.programStartDate=s.startDate;
+      if(s.programDay===undefined)s.programDay=1;
+      if(s.days&&typeof s.days==='object'){
+        for(const k in s.days){
+          const dd=s.days[k];
+          if(!dd||typeof dd!=='object')continue;
+          if(dd.handshake===undefined)dd.handshake=false;
+          if(!Array.isArray(dd.criticalTasks))dd.criticalTasks=[];
+          if(!Array.isArray(dd.criticalTasksDone))dd.criticalTasksDone=[];
+        }
       }
       s.version=7;
     },
@@ -449,6 +468,10 @@ export function defaultState(start,name,diet,prep){
       photoLocation:false,
       backupOutdoor:false,
     },
+    programMode:'75hard',
+    programDay:1,
+    programTotal:75,
+    programStartDate:start,
   };
 }
 
@@ -476,11 +499,21 @@ export function updateDayData(s,d,patch){
 }
 
 /**
- * True iff all six core tasks for day `d` are marked done.
+ * True iff every required task for day `d` is marked done.
  *
  * v3 renamed "calorie" to "dietAdherence". To stay back-compatible with
  * older day records (and with imported pre-v3 backups that have only the
  * legacy field), the diet slot is satisfied by either flag.
+ *
+ * v7 adds programMode awareness. In '75hard' mode (the default for all
+ * existing users), only the original six tasks are required. In
+ * 'livehard-p1' the day also requires:
+ *   - `handshake === true` (logged a handshake/call with someone), and
+ *   - at least one critical task defined and every defined one done.
+ *
+ * Live Hard adds a "4 stretching sessions per week" rule. That is a
+ * weekly aggregate, not a daily slot, so it's intentionally NOT in
+ * isDayComplete — surfaced separately by the UI as a weekly nudge.
  * @param {State} s
  * @param {number} d
  * @returns {boolean}
@@ -488,7 +521,24 @@ export function updateDayData(s,d,patch){
 export function isDayComplete(s,d){
   const dd=getDayData(s,d);
   const diet=dd.dietAdherence||dd.calorie;
-  return !!(diet&&dd.w1&&dd.w2&&dd.read&&dd.water&&dd.photo);
+  const core=!!(diet&&dd.w1&&dd.w2&&dd.read&&dd.water&&dd.photo);
+  if(!core)return false;
+  // Live Hard Phase 1 adds two more required slots.
+  if(s&&s.programMode==='livehard-p1'){
+    if(!dd.handshake)return false;
+    const list=Array.isArray(dd.criticalTasks)?dd.criticalTasks:[];
+    const done=Array.isArray(dd.criticalTasksDone)?dd.criticalTasksDone:[];
+    // Must have defined at least one critical task and finished every
+    // one that was defined.
+    const defined=list.filter(t=>typeof t==='string'&&t.trim().length>0);
+    if(defined.length===0)return false;
+    for(let i=0;i<list.length;i++){
+      if(typeof list[i]==='string'&&list[i].trim().length>0){
+        if(!done[i])return false;
+      }
+    }
+  }
+  return true;
 }
 
 /**
