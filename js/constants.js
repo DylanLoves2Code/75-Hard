@@ -64,3 +64,21 @@ export const TASKS = [
   {key:'water',label:'1 Gallon Water',icon:'💧',single:true},
   {key:'photo',label:'Progress Photo',icon:'📸',single:false},
 ];
+
+/**
+ * Extra tasks layered on TOP of {@link TASKS} when the user enters Live
+ * Hard Phase 1 (v7+). These are surfaced by js/tasks.js by concat'ing
+ * TASKS with this list whenever `state.programMode === 'livehard-p1'`.
+ *
+ * The critical-task list is itself a small inner UI — the boolean here
+ * is a coarse "I logged my list" flag. js/livehard.js / the Today tab
+ * own the actual per-row inputs.
+ *
+ * Future phases (Phase 2/3/4) will append further constants here (e.g.
+ * `LIVEHARD_P2_TASKS`).
+ * @type {TaskDef[]}
+ */
+export const LIVEHARD_P1_TASKS = [
+  {key:'handshake',label:'Handshake / Call',icon:'🤝',single:true},
+  {key:'criticalTaskList',label:'Critical Task List',icon:'📋',single:true},
+];

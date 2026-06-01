@@ -47,6 +47,15 @@ import { renderReport } from './report.js';
 import {
   BADGES, getUnlockedBadges, newlyUnlocked, consumeCelebrationFlag,
 } from './badges.js';
+import {
+  shouldOfferLiveHard, beginLiveHardPhase1, programLabel, calcProgramDay,
+} from './livehard.js';
+import {
+  openHealthInfo, closeHealthInfo, pickWeightCsv, onWeightCsvChange,
+} from './health.js';
+import {
+  openWearableInfo, closeWearableInfo, pickSleepCsv, onSleepCsvChange,
+} from './wearable.js';
 
 /**
  * Re-render the entire app shell from the given state. This is the
@@ -112,6 +121,11 @@ export function renderAll(s){
 
   // w5b: achievement badge strip on Today.
   renderBadgeStrip(s);
+
+  // w6b item 48: Live Hard continuation banner + program-aware tasks.
+  renderLiveHardBanner(s);
+  renderLiveHardTasks(s, day);
+  renderProgramDayLabel(s, day);
 
   // w5c item 45: partners panel on the Today tab. No-op when the user
   // hasn't added any partners yet (the host element hides itself).
@@ -241,6 +255,128 @@ export function renderUrgentBanner(s, day){
   const complBanner = document.getElementById('complete-banner');
   if(complBanner) complBanner.classList.remove('visible');
   banner.classList.add('visible');
+}
+
+/**
+ * w6b item 48: Render the "BEGIN LIVE HARD PHASE 1" banner if the user
+ * qualifies. The banner is mutually exclusive with the day-complete /
+ * urgent banners — it shouts on Day 75 specifically.
+ *
+ * @param {import('./state.js').State} s
+ * @returns {void}
+ */
+export function renderLiveHardBanner(s){
+  const banner = document.getElementById('livehard-banner');
+  if(!banner) return;
+  if(shouldOfferLiveHard(s)){
+    banner.classList.add('visible');
+    banner.style.display = '';
+  } else {
+    banner.classList.remove('visible');
+    banner.style.display = 'none';
+  }
+}
+
+/**
+ * w6b item 48: Update the program-day label ("Day 5 / 30" for Live Hard
+ * Phase 1, "Day 75 / 75" for 75 Hard). For '75hard' mode we keep the
+ * existing 1..75 numerator; for 'livehard-p1' we display the program-day
+ * inside the 30-day phase plus an "// LIVE HARD — PHASE 1" subtitle.
+ *
+ * @param {import('./state.js').State} s
+ * @param {number} day  calendar day (1..75 typically)
+ * @returns {void}
+ */
+export function renderProgramDayLabel(s, day){
+  const total = s && s.programTotal ? s.programTotal : TOTAL;
+  const ofEl = document.querySelector('#current-day-num + .of75');
+  const numEl = document.getElementById('current-day-num');
+  if(s && s.programMode === 'livehard-p1'){
+    const pDay = calcProgramDay(s);
+    if(numEl) numEl.textContent = pDay;
+    if(ofEl) ofEl.textContent = '/ ' + total;
+    // Append the program label under the date sub-text so it's
+    // discoverable without designing a whole new banner row.
+    const dateEl = document.getElementById('current-day-date');
+    if(dateEl && dateEl.textContent && !dateEl.textContent.includes(programLabel(s))){
+      dateEl.textContent = dateEl.textContent + '  //  ' + programLabel(s);
+    }
+  } else {
+    if(numEl) numEl.textContent = day;
+    if(ofEl) ofEl.textContent = '/ ' + TOTAL;
+  }
+}
+
+/**
+ * w6b item 48: Render the Live Hard critical-task list + handshake
+ * checkbox under the OBJECTIVES section, only in 'livehard-p1' mode.
+ * In '75hard' mode the host section is hidden.
+ *
+ * Critical tasks: 3 free-form inputs persisted to `day.criticalTasks`
+ * (string[]) and `day.criticalTasksDone` (boolean[]). The user may
+ * leave inputs blank — only non-empty rows are required by isDayComplete.
+ *
+ * @param {import('./state.js').State} s
+ * @param {number} day
+ * @returns {void}
+ */
+export function renderLiveHardTasks(s, day){
+  const host = document.getElementById('livehard-tasks');
+  if(!host) return;
+  if(!s || s.programMode !== 'livehard-p1'){
+    host.style.display = 'none';
+    host.innerHTML = '';
+    return;
+  }
+  host.style.display = '';
+  const dd = getDayData(s, day);
+  const tasks = Array.isArray(dd.criticalTasks) ? dd.criticalTasks.slice() : [];
+  const done = Array.isArray(dd.criticalTasksDone) ? dd.criticalTasksDone.slice() : [];
+  // Pad to 3 visible rows so the user always sees the canonical Live
+  // Hard target without having to add rows themselves.
+  while(tasks.length < 3){ tasks.push(''); done.push(false); }
+
+  host.innerHTML = `
+    <div class="section-title">// LIVE HARD — CRITICAL TASKS</div>
+    <div class="section-hint">// 3-5 daily must-do items. Leave blank to skip a slot.</div>
+    <div id="livehard-critical-list"></div>
+    <label class="livehard-handshake">
+      <input type="checkbox" id="livehard-handshake-input" ${dd.handshake?'checked':''}>
+      <span>🤝 Handshake / call with someone today</span>
+    </label>
+  `;
+  const list = host.querySelector('#livehard-critical-list');
+  tasks.forEach((t, i) => {
+    const row = document.createElement('div');
+    row.className = 'livehard-critical-row';
+    row.innerHTML = `
+      <input type="checkbox" class="livehard-critical-done" data-i="${i}" ${done[i]?'checked':''}>
+      <input type="text" class="livehard-critical-text" data-i="${i}" placeholder="// CRITICAL TASK ${i+1}" value="${(t||'').replace(/"/g,'&quot;')}">
+    `;
+    list.appendChild(row);
+  });
+
+  const save = () => {
+    const s2 = getState();
+    if(!s2) return;
+    const dd2 = getDayData(s2, day);
+    const next = { ...dd2 };
+    const texts = Array.from(host.querySelectorAll('.livehard-critical-text')).map(i => i.value);
+    const checks = Array.from(host.querySelectorAll('.livehard-critical-done')).map(i => i.checked);
+    next.criticalTasks = texts;
+    next.criticalTasksDone = checks;
+    next.handshake = !!host.querySelector('#livehard-handshake-input').checked;
+    s2.days[day] = next;
+    saveState(s2);
+  };
+  host.querySelectorAll('.livehard-critical-text').forEach(i => {
+    i.addEventListener('blur', save);
+  });
+  host.querySelectorAll('.livehard-critical-done').forEach(i => {
+    i.addEventListener('change', () => { save(); /* recompute completion */ const s2=getState(); if(s2) renderAll(s2); });
+  });
+  const hs = host.querySelector('#livehard-handshake-input');
+  if(hs) hs.addEventListener('change', () => { save(); const s2=getState(); if(s2) renderAll(s2); });
 }
 
 /** Interval handle for the 60-second urgent-banner re-evaluation. */
@@ -497,6 +633,48 @@ function wireStaticHandlers(){
 
   document.querySelector('#confirm-overlay .btn-danger').addEventListener('click',executeReset);
   document.querySelector('#confirm-overlay .btn-cancel').addEventListener('click',cancelReset);
+
+  // w6b item 48: Live Hard opt-in banner.
+  const lhBtn = document.getElementById('livehard-begin-btn');
+  if(lhBtn){
+    lhBtn.addEventListener('click', () => {
+      if(beginLiveHardPhase1()){
+        // beginLiveHardPhase1 emits state:changed which triggers renderAll.
+      }
+    });
+  }
+
+  // w6b item 49: Health integration buttons inside Settings.
+  const healthInfoBtn = document.getElementById('set-health-info');
+  if(healthInfoBtn) healthInfoBtn.addEventListener('click', openHealthInfo);
+  const healthInfoClose = document.getElementById('health-info-close');
+  if(healthInfoClose) healthInfoClose.addEventListener('click', closeHealthInfo);
+  const healthInfoOverlay = document.getElementById('health-info-overlay');
+  if(healthInfoOverlay){
+    healthInfoOverlay.addEventListener('click', e => {
+      if(e.target === healthInfoOverlay) closeHealthInfo();
+    });
+  }
+  const healthCsvBtn = document.getElementById('set-health-csv');
+  if(healthCsvBtn) healthCsvBtn.addEventListener('click', pickWeightCsv);
+  const healthCsvInput = document.getElementById('health-weight-csv-input');
+  if(healthCsvInput) healthCsvInput.addEventListener('change', onWeightCsvChange);
+
+  // w6b item 50: Wearable sleep integration buttons inside Settings.
+  const wearableInfoBtn = document.getElementById('set-wearable-info');
+  if(wearableInfoBtn) wearableInfoBtn.addEventListener('click', openWearableInfo);
+  const wearableInfoClose = document.getElementById('wearable-info-close');
+  if(wearableInfoClose) wearableInfoClose.addEventListener('click', closeWearableInfo);
+  const wearableInfoOverlay = document.getElementById('wearable-info-overlay');
+  if(wearableInfoOverlay){
+    wearableInfoOverlay.addEventListener('click', e => {
+      if(e.target === wearableInfoOverlay) closeWearableInfo();
+    });
+  }
+  const wearableCsvBtn = document.getElementById('set-wearable-csv');
+  if(wearableCsvBtn) wearableCsvBtn.addEventListener('click', pickSleepCsv);
+  const wearableCsvInput = document.getElementById('wearable-sleep-csv-input');
+  if(wearableCsvInput) wearableCsvInput.addEventListener('change', onSleepCsvChange);
 }
 
 /**

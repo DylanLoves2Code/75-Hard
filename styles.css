@@ -744,3 +744,21 @@ body.shared-view-mode{background:var(--bg);}
 .shared-back{margin-top:0.85rem;}
 .shared-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.65rem;margin-bottom:1.25rem;}
 .shared-view .section{padding:0;border:none;}
+
+/* =========================================================================
+   w6b item 48: Live Hard continuation banner + critical-task UI.
+   ========================================================================= */
+.livehard-banner{display:none;background:linear-gradient(135deg,rgba(74,144,226,0.18),rgba(74,144,226,0.04));border:1px solid var(--blue);border-left:4px solid var(--blue);padding:0.9rem 1.25rem;margin:0 1.25rem 1.25rem;align-items:center;gap:0.9rem;animation:slideIn 0.4s ease;}
+.livehard-banner.visible{display:flex;}
+.livehard-icon{font-size:1.6rem;flex-shrink:0;}
+.livehard-text{display:flex;flex-direction:column;gap:0.25rem;flex:1;min-width:0;}
+.livehard-title{font-family:var(--font-d);font-size:1.05rem;letter-spacing:0.08em;color:var(--blue);}
+.livehard-sub{font-family:var(--font-m);font-size:0.65rem;color:var(--text2);letter-spacing:0.05em;}
+#livehard-tasks{padding:0.75rem 0 0;}
+.livehard-critical-row{display:flex;gap:0.5rem;align-items:center;margin-bottom:0.35rem;}
+.livehard-critical-row .livehard-critical-done{flex:0 0 auto;width:1rem;height:1rem;}
+.livehard-critical-row .livehard-critical-text{flex:1;background:var(--bg);border:1px solid var(--border2);color:var(--text);font-family:var(--font-m);font-size:0.7rem;padding:0.35rem 0.5rem;outline:none;}
+.livehard-handshake{display:flex;gap:0.5rem;align-items:center;margin-top:0.5rem;font-family:var(--font-m);font-size:0.7rem;color:var(--text2);letter-spacing:0.05em;}
+
+/* w6b item 49/50: Health/wearable OAuth-stub info modals. */
+.info-modal-body{margin:0;padding:1rem 1.25rem;background:var(--bg);border:1px solid var(--border);max-height:55vh;overflow-y:auto;}

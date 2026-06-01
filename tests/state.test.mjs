@@ -699,8 +699,10 @@ test('v6: migrate preserves existing quotes and audiobookMinutes values', () => 
   assert.equal(state.books[1].quotes[1].page, undefined);
 });
 
-test('v6: migrate is idempotent once at current version', () => {
-  // A v6 blob round-trips through migrate without touching anything.
+test('v6: migrate is idempotent at v6 only when CURRENT == 6 — at v7+ it advances', () => {
+  // Once CURRENT_SCHEMA_VERSION advanced past 6, a v6 blob walks forward
+  // (currently to v7 for Live Hard program-mode fields). Existing v6
+  // book entries must remain intact through that step.
   const raw = {
     version: 6,
     startDate: '2025-01-01',
@@ -712,12 +714,15 @@ test('v6: migrate is idempotent once at current version', () => {
     metrics: {}, notes: {},
   };
   const { state, migrated } = migrate(raw);
-  assert.equal(migrated, false);
+  assert.equal(migrated, true);
   assert.equal(state.version, CURRENT_SCHEMA_VERSION);
   assert.equal(state.books[1].audiobookMinutes, 0);
+  // v7 fields landed with safe defaults.
+  assert.equal(state.programMode, '75hard');
+  assert.equal(state.programTotal, 75);
 });
 
-test('v6: migrate walks undefined -> 6 across the entire chain', () => {
+test('v6: migrate walks undefined -> CURRENT across the entire chain', () => {
   // Pre-versioned blob (legacy) plus a legacy book entry that predates
   // v3 nonfiction and v6 quotes/audio. Every migration in the chain
   // should run.
@@ -737,6 +742,102 @@ test('v6: migrate walks undefined -> 6 across the entire chain', () => {
   // v6 stamped quotes + audiobookMinutes.
   assert.deepEqual(state.books[2].quotes, []);
   assert.equal(state.books[2].audiobookMinutes, 0);
+});
+
+// --- v7 schema migration (Live Hard) ---------------------------------------
+
+test('v7: migrate adds programMode/programDay/programTotal/programStartDate defaults', () => {
+  const raw = {
+    version: 6,
+    startDate: '2025-01-01',
+    name: 'X',
+    diet: { name: 'Custom', customText: '' },
+    days: { 1: { dietAdherence: true } },
+    drinks: {}, books: {}, metrics: {}, notes: {},
+  };
+  const { state, migrated } = migrate(raw);
+  assert.equal(migrated, true);
+  assert.equal(state.version, CURRENT_SCHEMA_VERSION);
+  assert.equal(state.programMode, '75hard');
+  assert.equal(state.programTotal, 75);
+  assert.equal(state.programStartDate, '2025-01-01');
+  assert.equal(typeof state.programDay, 'number');
+});
+
+test('v7: migrate seeds per-day handshake/criticalTasks/criticalTasksDone defaults', () => {
+  const raw = {
+    version: 6,
+    startDate: '2025-01-01',
+    name: 'X',
+    diet: { name: 'Custom', customText: '' },
+    days: { 1: { dietAdherence: true }, 2: {} },
+    drinks: {}, books: {}, metrics: {}, notes: {},
+  };
+  const { state } = migrate(raw);
+  for(const k of ['1','2']){
+    assert.equal(state.days[k].handshake, false);
+    assert.deepEqual(state.days[k].criticalTasks, []);
+    assert.deepEqual(state.days[k].criticalTasksDone, []);
+  }
+});
+
+test('v7: migrate preserves existing programMode on a partial v7 blob', () => {
+  // A blob already carrying livehard-p1 must not be reset to '75hard'.
+  const raw = {
+    version: 6,
+    startDate: '2025-01-01',
+    programMode: 'livehard-p1',
+    programDay: 5,
+    programTotal: 30,
+    programStartDate: '2025-04-01',
+    name: 'X',
+    diet: { name: 'Custom', customText: '' },
+    days: {}, drinks: {}, books: {}, metrics: {}, notes: {},
+  };
+  const { state } = migrate(raw);
+  assert.equal(state.programMode, 'livehard-p1');
+  assert.equal(state.programTotal, 30);
+  assert.equal(state.programStartDate, '2025-04-01');
+  assert.equal(state.programDay, 5);
+});
+
+test('v7: isDayComplete in 75hard mode ignores handshake + criticalTasks', () => {
+  const s = defaultState('2025-01-01', 'X');
+  // Six core tasks done, but no handshake, no critical tasks.
+  updateDayData(s, 1, {
+    dietAdherence: true, w1: true, w2: true, read: true, water: true, photo: true,
+  });
+  assert.equal(s.programMode, '75hard');
+  assert.equal(isDayComplete(s, 1), true);
+});
+
+test('v7: isDayComplete in livehard-p1 mode requires handshake + criticalTasks', () => {
+  const s = defaultState('2025-01-01', 'X');
+  s.programMode = 'livehard-p1';
+  s.programTotal = 30;
+  updateDayData(s, 1, {
+    dietAdherence: true, w1: true, w2: true, read: true, water: true, photo: true,
+  });
+  // Missing handshake + critical tasks => incomplete.
+  assert.equal(isDayComplete(s, 1), false);
+  updateDayData(s, 1, { handshake: true });
+  // Still no critical tasks defined => incomplete.
+  assert.equal(isDayComplete(s, 1), false);
+  updateDayData(s, 1, { criticalTasks: ['call mom','run 5k','meditate'], criticalTasksDone: [false,false,false] });
+  assert.equal(isDayComplete(s, 1), false);
+  updateDayData(s, 1, { criticalTasksDone: [true,true,true] });
+  assert.equal(isDayComplete(s, 1), true);
+  // Drop one done => incomplete again.
+  updateDayData(s, 1, { criticalTasksDone: [true,false,true] });
+  assert.equal(isDayComplete(s, 1), false);
+});
+
+test('v7: defaultState writes Live Hard program defaults', () => {
+  const s = defaultState('2025-01-01', 'X');
+  assert.equal(s.programMode, '75hard');
+  assert.equal(s.programDay, 1);
+  assert.equal(s.programTotal, 75);
+  assert.equal(s.programStartDate, '2025-01-01');
 });
 
 // --- storage usage ---------------------------------------------------------

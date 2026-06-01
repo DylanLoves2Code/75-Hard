@@ -83,6 +83,24 @@ import { showToast } from './toast.js';
  *                                                    not counted toward the 10-page rule).
  * @property {Object<string,{weight:?number,sleep:?number}>} metrics  Daily weight/sleep metrics.
  * @property {Object<string,string>} notes            Daily field notes (free text).
+ * @property {'75hard'|'livehard-p1'} [programMode]   v7+ which program the user is currently
+ *                                                    running. Defaults to '75hard'. After the
+ *                                                    user opts in to Live Hard Phase 1 on
+ *                                                    completion of Day 75, this flips to
+ *                                                    'livehard-p1'. Future phases will use
+ *                                                    'livehard-p2', 'livehard-p3', etc.
+ * @property {number} [programDay]                    v7+ 1-based day index WITHIN the current
+ *                                                    program. For 75hard this is always equal to
+ *                                                    {@link calcCurrentDay}. For livehard-p1 this
+ *                                                    resets to 1 when the user opts in and
+ *                                                    advances 1..30.
+ * @property {number} [programTotal]                  v7+ total length of the current program.
+ *                                                    75 for '75hard', 30 for 'livehard-p1', etc.
+ * @property {string} [programStartDate]              v7+ ISO start date of the current program
+ *                                                    phase (used to compute programDay from
+ *                                                    wall-clock). For '75hard' this is the
+ *                                                    original `startDate`; for 'livehard-p1' this
+ *                                                    is the date the user opted in.
  */
 
 const DAY_DEFAULTS=Object.freeze({
@@ -98,13 +116,21 @@ const DAY_DEFAULTS=Object.freeze({
   failureReason:null,
   // v5+ workout-timer durations (seconds). 0 = never timed.
   w1duration:0,w2duration:0,
+  // v7+ Live Hard fields. The original six tasks continue to gate
+  // {@link isDayComplete} for '75hard'; in 'livehard-p1' the handshake
+  // boolean + the criticalTasksDone[] are also required (see
+  // isDayComplete). These default to "not done" so a pre-livehard day
+  // record always reads as incomplete on those extra slots.
+  handshake:false,
+  criticalTasks:Object.freeze([]),
+  criticalTasksDone:Object.freeze([]),
 });
 
 /**
  * The schema version this build of the app writes. Bumped whenever the
  * shape of stored state changes; {@link migrate} handles upgrades.
  */
-export const CURRENT_SCHEMA_VERSION = 6;
+export const CURRENT_SCHEMA_VERSION = 7;
 
 /**
  * Parse a "YYYY-MM-DD" string as a Date at LOCAL midnight (not UTC).
@@ -264,6 +290,40 @@ const MIGRATIONS=[
       s.version=6;
     },
   },
+  {
+    from:6,to:7,
+    run:(s)=>{
+      // v7: Live Hard 365-day continuation MVP.
+      //   - Adds top-level `programMode` ('75hard'|'livehard-p1'),
+      //     `programDay` (1..programTotal), `programTotal` (75|30|...),
+      //     and `programStartDate` (ISO date). All default to keeping
+      //     existing users on the original 75 Hard track with no
+      //     behavior change. The Live Hard banner is only offered after
+      //     Day 75 hits the 50%+ completion threshold — see
+      //     js/livehard.js for the gating logic.
+      //   - Adds per-day `handshake:false`, `criticalTasks:[]`, and
+      //     `criticalTasksDone:[]`. These fields are inert in '75hard'
+      //     mode (isDayComplete ignores them) and become required in
+      //     'livehard-p1'.
+      if(s.programMode===undefined)s.programMode='75hard';
+      if(s.programTotal===undefined)s.programTotal=75;
+      if(s.programStartDate===undefined)s.programStartDate=s.startDate;
+      // programDay is computed lazily by calcProgramDay; we don't need
+      // to persist a stale value at migration time. Stamp it for forward
+      // compatibility — recomputed every render.
+      if(s.programDay===undefined)s.programDay=1;
+      if(s.days&&typeof s.days==='object'){
+        for(const k in s.days){
+          const dd=s.days[k];
+          if(!dd||typeof dd!=='object')continue;
+          if(dd.handshake===undefined)dd.handshake=false;
+          if(!Array.isArray(dd.criticalTasks))dd.criticalTasks=[];
+          if(!Array.isArray(dd.criticalTasksDone))dd.criticalTasksDone=[];
+        }
+      }
+      s.version=7;
+    },
+  },
 ];
 
 /**
@@ -412,6 +472,13 @@ export function defaultState(start,name,diet){
     name:name||'',
     diet:diet||{name:'Custom',customText:''},
     days:{},drinks:{},books:{},metrics:{},notes:{},
+    // v7+ Live Hard continuation. New users start on the original 75
+    // Hard track; the Live Hard banner appears on Day 75 if the user
+    // qualifies — see js/livehard.js.
+    programMode:'75hard',
+    programDay:1,
+    programTotal:75,
+    programStartDate:start,
   };
 }
 
@@ -439,11 +506,21 @@ export function updateDayData(s,d,patch){
 }
 
 /**
- * True iff all six core tasks for day `d` are marked done.
+ * True iff every required task for day `d` is marked done.
  *
  * v3 renamed "calorie" to "dietAdherence". To stay back-compatible with
  * older day records (and with imported pre-v3 backups that have only the
  * legacy field), the diet slot is satisfied by either flag.
+ *
+ * v7 adds programMode awareness. In '75hard' mode (the default for all
+ * existing users), only the original six tasks are required. In
+ * 'livehard-p1' the day also requires:
+ *   - `handshake === true` (logged a handshake/call with someone), and
+ *   - at least one critical task defined and every defined one done.
+ *
+ * Live Hard adds a "4 stretching sessions per week" rule. That is a
+ * weekly aggregate, not a daily slot, so it's intentionally NOT in
+ * isDayComplete — surfaced separately by the UI as a weekly nudge.
  * @param {State} s
  * @param {number} d
  * @returns {boolean}
@@ -451,7 +528,24 @@ export function updateDayData(s,d,patch){
 export function isDayComplete(s,d){
   const dd=getDayData(s,d);
   const diet=dd.dietAdherence||dd.calorie;
-  return !!(diet&&dd.w1&&dd.w2&&dd.read&&dd.water&&dd.photo);
+  const core=!!(diet&&dd.w1&&dd.w2&&dd.read&&dd.water&&dd.photo);
+  if(!core)return false;
+  // Live Hard Phase 1 adds two more required slots.
+  if(s&&s.programMode==='livehard-p1'){
+    if(!dd.handshake)return false;
+    const list=Array.isArray(dd.criticalTasks)?dd.criticalTasks:[];
+    const done=Array.isArray(dd.criticalTasksDone)?dd.criticalTasksDone:[];
+    // Must have defined at least one critical task and finished every
+    // one that was defined.
+    const defined=list.filter(t=>typeof t==='string'&&t.trim().length>0);
+    if(defined.length===0)return false;
+    for(let i=0;i<list.length;i++){
+      if(typeof list[i]==='string'&&list[i].trim().length>0){
+        if(!done[i])return false;
+      }
+    }
+  }
+  return true;
 }
 
 /**
