@@ -99,6 +99,12 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .task-label{font-family:var(--font-b);font-weight:400;font-size:0.9rem;letter-spacing:0.04em;flex:1;transition:color 0.2s;}
 .task-icon{font-size:1rem;width:1.4rem;text-align:center;}
 .task-sub{font-family:var(--font-m);font-size:0.6rem;color:var(--text3);letter-spacing:0.1em;margin-left:auto;}
+.btn-edit-label{margin-left:auto;background:transparent;border:1px solid var(--border2);color:var(--text3);font-family:var(--font-m);font-size:0.55rem;letter-spacing:0.15em;padding:0.25rem 0.55rem;cursor:pointer;text-transform:uppercase;transition:all 0.2s;flex-shrink:0;}
+.btn-edit-label:hover{border-color:var(--accent);color:var(--accent);}
+.task-item.editing{cursor:default;}
+.task-item.editing:hover{border-color:var(--border2);}
+.task-label-input{flex:1;background:var(--bg3);border:1px solid var(--border2);border-left:3px solid var(--accent);color:var(--text);font-family:var(--font-m);font-size:0.85rem;letter-spacing:0.04em;padding:0.3rem 0.5rem;outline:none;min-width:0;-webkit-appearance:none;appearance:none;}
+.task-label-input:focus{border-color:var(--accent2);border-left-color:var(--accent2);}
 
 /* WATER METER */
 .water-meter-wrap{padding:0 1.25rem 1.25rem;}
